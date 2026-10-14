@@ -13,7 +13,7 @@ python3 simulateur.py --truth-csv /tmp/verite.csv   # robot + salle intégrée
 python3 pilote_simulation.py --laps 2                     # pilote automatique : tours autour de l'îlot central
 ```
 
-Options utiles de `simulateur.py` : `--noise 0` (capteurs parfaits), `--seed N`, `--pose X Y THETA`, `--map carte.pgm --resolution 0.05 --origin X Y` (votre propre carte, noir = obstacle).
+Options utiles de `simulateur.py` : `--dropout 0.01` (1 % de rayons LiDAR invalides à 0,0 m, comme un vrai LDS ; c'est ce qui reproduit les saccades), `--noise 0` (capteurs parfaits), `--seed N`, `--pose X Y THETA`, `--map carte.pgm --resolution 0.05 --origin X Y` (votre propre carte, noir = obstacle).
 
 ## Ce qui est simulé
 

@@ -26,7 +26,7 @@ Dépendances manquantes : `./scripts/installer_dependances.sh --verifier` puis `
 | `noeud_odometrie.py` | Odométrie roues + IMU, navigation réactive, enregistrement CSV |
 | `cartographe.py` | Cartographie SLAM (live ou à partir d'un CSV), export de la carte |
 | `navigation_carte.py` | Navigation sur une carte sauvegardée |
-| `planificateur_chemin.py` | Recherche de chemin sur grille (nom de classe historique `DStarLite`) |
+| `planificateur_chemin.py` | A* 8-connexe, lissage par lignes de vue (nom de classe historique `DStarLite`) |
 | `revisites_visuelles.py`, `relocalisation_visuelle.py` | Vision : détection de lieux déjà vus, relocalisation SIFT (expérimentale) |
 | `flux_video.py`, `serveur_camera.py` | Retour caméra du robot |
 | `simulateur.py`, `pilote_simulation.py` | Robot virtuel et pilote automatique |

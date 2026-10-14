@@ -8,6 +8,8 @@ Dans l'atelier, l'onglet **Robot (SSH)** remplace les lignes de commande :
 4. Cliquez **Lancer le bringup** : l'atelier exécute sur le robot `ros2 launch turtlebot3_bringup robot.launch.py` dans un shell interactif du robot (il lit donc son `~/.bashrc`, comme une session ouverte à la main), avec le `ROS_DOMAIN_ID` choisi (30 par défaut, comme `lancer.sh`). « Modèle » et « Modèle LiDAR » ne remplacent les valeurs du robot que si vous les choisissez (LDS-01, LDS-02 ou LDS-03). La sortie du robot s'affiche dans la fenêtre.
 5. **Arrêter le bringup** envoie un Ctrl-C au robot ; fermer l'atelier arrête aussi le bringup lancé d'ici.
 
+6. **Lancer la caméra** copie et démarre `serveur_camera.py` sur le robot (port 9999) ; l'onglet Caméra est pré-rempli. Voir `NAVIGATION_FLUIDE.md`.
+
 L'onglet **Connexion ROS** confirme ensuite que `/imu`, `/joint_states` et `/scan` sont bien publiés.
 
 Les réglages sans secret (adresse, utilisateur, clé, domaine, modèle) sont gardés dans `~/.config/atelier_slam/robot.json`, hors du dépôt. Pour une autre commande de bringup, ajoutez `"bringup_command": "..."` dans ce fichier.

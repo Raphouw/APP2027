@@ -100,5 +100,23 @@ class FluidityTests(unittest.TestCase):
         self.assertTrue(all(abs(y) > 0.05 for x, y in nav.path[:-1] if 0.3 < x < 0.5) or len(nav.path) > 1)
 
 
+class DestinationMessageTests(unittest.TestCase):
+    def problem(self, **state):
+        from types import SimpleNamespace
+        from slam_components.manager_ui import ManagerUIMixin
+        base = dict(_pending_pose_id=None, _require_pose=False, _last_navigation={},
+                    _last_health=dict(calibrated=True, imu=True, wheels=True, lidar=True))
+        base.update(state)
+        return ManagerUIMixin._destination_problem(SimpleNamespace(**base), True)
+
+    def test_each_refusal_says_what_to_do(self):
+        self.assertIsNone(self.problem())
+        self.assertIn('Replacer le robot', self.problem(_require_pose=True))
+        self.assertIn('patientez', self.problem(_pending_pose_id='x'))
+        self.assertIn('Calibration', self.problem(_last_health=dict(calibrated=False)))
+        self.assertIn('LiDAR', self.problem(_last_health=dict(calibrated=True, imu=True, wheels=True, lidar=False)))
+        self.assertIn('mesures fraîches', self.problem(_last_navigation={'state': 'WAITING_SENSORS'}))
+
+
 if __name__ == '__main__':
     unittest.main()
