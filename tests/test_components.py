@@ -19,12 +19,12 @@ class ComponentsTests(unittest.TestCase):
     def test_entry_points_import_without_starting_ros(self):
         import rclpy
         with patch.object(rclpy, 'init', side_effect=AssertionError('ROS ne doit pas démarrer')):
-            for name in ('tb3_nav_node', 'nav_odom', 'carto_mat', 'manager'):
+            for name in ('noeud_odometrie', 'navigation_carte', 'cartographe', 'atelier'):
                 importlib.import_module(name)
 
     def test_both_controllers_share_the_pid(self):
-        from tb3_nav_node import PIDController as reactive_pid
-        from nav_odom import PIDController as map_pid
+        from noeud_odometrie import PIDController as reactive_pid
+        from navigation_carte import PIDController as map_pid
         self.assertIs(reactive_pid, map_pid)
 
     def test_pid_limits_integral_and_resets(self):

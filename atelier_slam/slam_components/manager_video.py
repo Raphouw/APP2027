@@ -5,7 +5,7 @@ Les attributs sont initialisés par le point d’entrée ; ce mixin ne lance auc
 
 import tkinter as tk
 from tkinter import messagebox
-from video_stream import RTSPStreamReader, MockStreamReader
+from flux_video import RTSPStreamReader, MockStreamReader
 from .video_dependencies import HAS_PILLOW, Image, ImageTk
 from .system_tools import check_ffmpeg
 
@@ -20,7 +20,7 @@ class ManagerVideoMixin:
                 "Installez-le avec:\n"
                 "  sudo apt-get update\n"
                 "  sudo apt-get install ffmpeg\n\n"
-                "Ceci est nécessaire sur la machine exécutant manager.py,\n"
+                "Ceci est nécessaire sur la machine exécutant atelier.py,\n"
                 "pas sur le robot."
             )
             return
@@ -31,8 +31,8 @@ class ManagerVideoMixin:
             return
 
         print(f"[MANAGER] Tentative de connexion au flux vidéo: {url}")
-        print("[MANAGER] Assurez-vous que ros_raw_stream.py est en cours sur le robot:")
-        print("  - Sur le robot: python3 ros_raw_stream.py &")
+        print("[MANAGER] Assurez-vous que serveur_camera.py est en cours sur le robot:")
+        print("  - Sur le robot: python3 serveur_camera.py &")
         print("[MANAGER] Les logs s'afficheront dans le terminal...")
 
         self.video_reader = RTSPStreamReader(url, width=640, height=480)

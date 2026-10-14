@@ -19,7 +19,7 @@ class LoopVisionMixin:
             self.last_camera_frame = image
 
             # Ajouter la frame actuelle à la base de données
-            self.loop_closure.add_reference_frame(
+            self.revisites_visuelles.add_reference_frame(
                 timestamp=time.time(),
                 image=image,
                 pose_x=self.x,
@@ -28,7 +28,7 @@ class LoopVisionMixin:
             )
 
             # Détecter une boucle
-            lc_result = self.loop_closure.detect_loop(
+            lc_result = self.revisites_visuelles.detect_loop(
                 image, self.x, self.y, self.theta
             )
 

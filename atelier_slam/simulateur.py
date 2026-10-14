@@ -2,7 +2,7 @@
 """Robot simulé : publie /joint_states, /imu et /scan, lit /cmd_vel, sans Gazebo.
 
 Les nœuds de l'atelier tournent alors sans modification. La vérité terrain est
-écrite dans un CSV (timestamp,x,y,theta) pour `evaluate_trajectory.py`.
+écrite dans un CSV (timestamp,x,y,theta) pour `evaluer_trajectoire.py`.
 """
 import argparse
 import csv

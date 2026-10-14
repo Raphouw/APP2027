@@ -9,11 +9,11 @@ Dans le manager, cochez **Mode simulation (sans robot)** avant de lancer une car
 En ligne de commande (ROS chargé, depuis `atelier_slam/`) :
 
 ```bash
-python3 simulator.py --truth-csv /tmp/verite.csv   # robot + salle intégrée
-python3 sim_driver.py --laps 2                     # pilote automatique : tours autour de l'îlot central
+python3 simulateur.py --truth-csv /tmp/verite.csv   # robot + salle intégrée
+python3 pilote_simulation.py --laps 2                     # pilote automatique : tours autour de l'îlot central
 ```
 
-Options utiles de `simulator.py` : `--noise 0` (capteurs parfaits), `--seed N`, `--pose X Y THETA`, `--map carte.pgm --resolution 0.05 --origin X Y` (votre propre carte, noir = obstacle).
+Options utiles de `simulateur.py` : `--noise 0` (capteurs parfaits), `--seed N`, `--pose X Y THETA`, `--map carte.pgm --resolution 0.05 --origin X Y` (votre propre carte, noir = obstacle).
 
 ## Ce qui est simulé
 
@@ -29,7 +29,7 @@ source /opt/ros/humble/setup.bash
 python3 scripts/mesurer_simulation.py --laps 2
 ```
 
-Le script lance simulateur, odométrie, cartographe et pilote, puis écrit `resultats.json` avec l'erreur de position (RMSE, 95e centile) et de cap de l'odométrie seule et du SLAM face à la vérité terrain, via `evaluate_trajectory.py`.
+Le script lance simulateur, odométrie, cartographe et pilote, puis écrit `resultats.json` avec l'erreur de position (RMSE, 95e centile) et de cap de l'odométrie seule et du SLAM face à la vérité terrain, via `evaluer_trajectoire.py`.
 
 ## Première mesure (2 tours, ~25 m par tour, graine 0, bruit 1)
 

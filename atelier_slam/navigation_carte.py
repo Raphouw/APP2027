@@ -10,7 +10,7 @@ from rclpy.qos import qos_profile_sensor_data
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan, Image
-from dstar_lite import DStarLite
+from planificateur_chemin import DStarLite
 from slam_components.session_ipc import SessionChannel
 from slam_components.command_ownership import CommandLease
 from slam_components.pid import PIDController
@@ -49,13 +49,13 @@ class TurtleController(MapLocalizationMixin, MapControlMixin, Node):
                                          integrator_max=0.2, derivative_alpha=0.2)
         self.last_control_time = self.last_relocalize_time = time.monotonic()
         self.relocalize_interval = 10.0
-        self.global_localizer = self.last_camera_frame = None
+        self.relocalisation_visuelle = self.last_camera_frame = None
         self.declare_parameter('enable_visual_relocalization', False)
         self.enable_visual_relocalization = self.get_parameter('enable_visual_relocalization').value
         if self.enable_visual_relocalization:
             from pathlib import Path
-            from global_localizer import GlobalLocalizer
-            self.global_localizer = GlobalLocalizer(str(Path(yaml_path).parent/self.meta['image']))
+            from relocalisation_visuelle import GlobalLocalizer
+            self.relocalisation_visuelle = GlobalLocalizer(str(Path(yaml_path).parent/self.meta['image']))
         self.command_lease = CommandLease()
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.create_subscription(LaserScan, '/scan', self.scan_cb, qos_profile_sensor_data)
@@ -95,7 +95,7 @@ class TurtleController(MapLocalizationMixin, MapControlMixin, Node):
 
 def main():
     from slam_components.run_logging import install_run_logging
-    install_run_logging('nav_odom')
+    install_run_logging('navigation_carte')
     parser = argparse.ArgumentParser()
     parser.add_argument('yaml')
     parser.add_argument('--headless', action='store_true')

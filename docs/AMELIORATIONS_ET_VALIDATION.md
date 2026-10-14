@@ -4,13 +4,13 @@
 
 ## 1. Une seule source de commande locale
 
-Le gestionnaire arrête et attend l'ancien contrôleur avant de lancer le suivant. Pendant la navigation sur carte, `tb3_nav_node.py` tourne avec `odometry_only:=true` : il ne crée pas de publisher `/cmd_vel` et n'écoute pas les objectifs de navigation réactive.
+Le gestionnaire arrête et attend l'ancien contrôleur avant de lancer le suivant. Pendant la navigation sur carte, `noeud_odometrie.py` tourne avec `odometry_only:=true` : il ne crée pas de publisher `/cmd_vel` et n'écoute pas les objectifs de navigation réactive.
 
 Les deux contrôleurs utilisent également `CommandLease`, un verrou interprocessus. Si un contrôleur du projet possède déjà la commande, le second refuse de démarrer. La sortie du processus libère le verrou. Les arrêts normaux publient une vitesse nulle avant de libérer le propriétaire.
 
 Ce verrou concerne les programmes locaux exécutés par le même utilisateur. Il ne coordonne pas un autre ordinateur, la télécommande ou des nœuds externes au projet. Pour une commande distribuée, un arbitre ROS reste nécessaire.
 
-Fichiers : `command_ownership.py`, `manager_processes.py`, `tb3_nav_node.py`, `nav_odom.py`.
+Fichiers : `command_ownership.py`, `manager_processes.py`, `noeud_odometrie.py`, `navigation_carte.py`.
 
 ## 2. Une odométrie commune
 
@@ -80,7 +80,7 @@ L'agrandissement de carte déplace ensemble la grille, les tableaux de suivi, la
 
 Le choix d'A* privilégie une base vérifiable. Sur de grandes cartes, une mesure de performance puis une véritable implémentation incrémentale pourront être envisagées.
 
-Fichiers : `dstar_lite.py`, `occupancy_grid.py`.
+Fichiers : `planificateur_chemin.py`, `occupancy_grid.py`.
 
 ## 7. Sessions et gestionnaire
 
@@ -108,7 +108,7 @@ Les opérations longues se déroulent dans un worker, avec suivi depuis le fil T
 
 Le mode Auto lance directement le cartographe live sans menu console. Un bouton **« Terminer carte et naviguer »** rend explicite la fin de la phase guidée. Fermer normalement la fenêtre du cartographe peut aussi terminer cette phase. La navigation attend ensuite une destination choisie sur la carte. Le mode ne prétend pas effectuer une exploration autonome.
 
-Fichiers : `tb3_logging.py`, `manager_processes.py`, `manager_ui.py`, `mapping_io.py`, `mapping_runtime.py`, `carto_mat.py`.
+Fichiers : `tb3_logging.py`, `manager_processes.py`, `manager_ui.py`, `mapping_io.py`, `mapping_runtime.py`, `cartographe.py`.
 
 ## Commandes
 
@@ -123,14 +123,14 @@ Interface habituelle :
 
 ```bash
 cd atelier_slam
-python3 manager.py
+python3 atelier.py
 ```
 
 Régénération manuelle d'une carte historique dans un nouveau dossier :
 
 ```bash
 cd atelier_slam
-python3 carto_mat.py -m offline -i logs/run_20260401_093436.csv --auto --output-dir logs/reconstruction -oname reprise
+python3 cartographe.py -m offline -i logs/run_20260401_093436.csv --auto --output-dir logs/reconstruction -oname reprise
 ```
 
 Le résultat est `logs/reconstruction/map_reprise.yaml`, accompagné de son image référencée. Le mode offline ne crée plus de nœud ROS et peut être exécuté avec `MPLBACKEND=Agg` sans affichage graphique. Les imports ROS exigent toujours l'environnement installé.
@@ -138,7 +138,7 @@ Le résultat est `logs/reconstruction/map_reprise.yaml`, accompagné de son imag
 Mode odométrie seule, pour un lancement manuel coordonné :
 
 ```bash
-python3 tb3_nav_node.py --ros-args -p odometry_only:=true
+python3 noeud_odometrie.py --ros-args -p odometry_only:=true
 ```
 
 Ne pas ajouter `use_saved_pose:=true` sans vérifier que le robot est dans la pose et le repère de la session à restaurer.
@@ -176,7 +176,7 @@ Validation : tests de calcul et de sécurité, tests de widgets sur affichage vi
 
 ### Lancement simplifié et segmentation
 
-Un lanceur unique charge ROS et vérifie l’environnement sans installation ni `colcon build`. La commande historique `python3 manager.py` redirige vers ce lanceur. Le crash natif de l’ancien manager a été reproduit ; retirer uniquement ses pictogrammes hors BMP en mémoire permettait le démarrage. La nouvelle interface et `tk_safe_text` évitent ce déclencheur. Les traces de lancement, tests d’import isolés et logs natifs sont conservés par tentative. Détails et limites : [lancement et diagnostic](LANCEMENT_ET_DIAGNOSTIC.md).
+Un lanceur unique charge ROS et vérifie l’environnement sans installation ni `colcon build`. La commande historique `python3 atelier.py` redirige vers ce lanceur. Le crash natif de l’ancien manager a été reproduit ; retirer uniquement ses pictogrammes hors BMP en mémoire permettait le démarrage. La nouvelle interface et `tk_safe_text` évitent ce déclencheur. Les traces de lancement, tests d’import isolés et logs natifs sont conservés par tentative. Détails et limites : [lancement et diagnostic](LANCEMENT_ET_DIAGNOSTIC.md).
 
 
 ## Correction des oscillations après l’essai robot

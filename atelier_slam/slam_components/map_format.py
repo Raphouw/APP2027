@@ -18,7 +18,7 @@ def load_map(yaml_path, clearance=0.0):
     path = Path(yaml_path)
     meta = yaml.safe_load(path.read_text())
     if meta.get('format_version') != FORMAT_VERSION:
-        raise ValueError('Carte ancienne sans convention validée : la régénérer depuis un CSV avec carto_mat.py.')
+        raise ValueError('Carte ancienne sans convention validée : la régénérer depuis un CSV avec cartographe.py.')
     correction = meta.get('map_from_odom', [0., 0., 0.])
     if len(correction) != 3 or not all(math.isfinite(float(x)) for x in correction):
         raise ValueError('Transformation carte/odom invalide.')

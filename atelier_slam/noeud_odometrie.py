@@ -34,7 +34,7 @@ from geometry_msgs.msg import Twist, PoseStamped
 from std_msgs.msg import Bool, Float32, String
 from tf2_ros import TransformBroadcaster
 from rclpy.qos import qos_profile_sensor_data, QoSProfile, ReliabilityPolicy
-from loop_closure import LoopClosureDetector  # PHASE 5 : Détection de boucles
+from revisites_visuelles import LoopClosureDetector  # PHASE 5 : Détection de boucles
 
 
 # =============================================================================
@@ -47,7 +47,7 @@ from loop_closure import LoopClosureDetector  # PHASE 5 : Détection de boucles
 # =============================================================================
 class TurtleBot3NavNode(OdometryMixin, LidarPerceptionMixin, RecoveryMixin, ReactiveControlMixin, LoopVisionMixin, SessionLoggingMixin, Node):
     def __init__(self):
-        super().__init__('tb3_nav_node')
+        super().__init__('noeud_odometrie')
         self.get_logger().info("=== Démarrage TB3 Nav Node ===")
 
         # NOUVEAU : Déclaration du paramètre ROS 2 pour choisir le mode
@@ -269,7 +269,7 @@ class TurtleBot3NavNode(OdometryMixin, LidarPerceptionMixin, RecoveryMixin, Reac
         # -----------------------------------------------------------------
         # PHASE 5 – Loop Closure Detection (optionnel si caméra disponible)
         # -----------------------------------------------------------------
-        self.loop_closure = LoopClosureDetector(
+        self.revisites_visuelles = LoopClosureDetector(
             distance_threshold=0.5,
             feature_threshold=0.7,
             min_matches=15
@@ -374,7 +374,7 @@ def cleanup_handler():
 
 def main(args=None):
     from slam_components.run_logging import install_run_logging
-    install_run_logging('tb3_nav_node')
+    install_run_logging('noeud_odometrie')
     global _node
     rclpy.init(args=args)
     try:

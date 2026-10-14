@@ -1,6 +1,6 @@
 """Monde et robot simulés, sans ROS : grille d'occupation, lancer de rayons, cinématique.
 
-Sert au nœud `simulator.py` et aux tests. Les mesures imitent un TurtleBot3 Burger
+Sert au nœud `simulateur.py` et aux tests. Les mesures imitent un TurtleBot3 Burger
 (LiDAR 360 rayons, roues de 33 mm, voie de 160 mm) avec un bruit réglable.
 """
 import math

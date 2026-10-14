@@ -17,7 +17,7 @@ L’odométrie reste continue dans `my_odom`. La carte est exprimée dans `map`.
 7. Le graphe optimise les poses avec `scipy.optimize.least_squares`, une perte robuste et un Jacobien creux. La première pose fixe le repère. Une solution non finie, non convergée ou augmentant le coût robuste est refusée.
 8. Les observations conservent une pose relative à leur image clé. Après optimisation, les anciens scans sont reprojetés avec les nouvelles poses : corriger le trajet seul laisserait les murs dédoublés.
 
-Le recalage historique est conservé uniquement pour les objets de grille qui n’activent pas le moteur ; le point d’entrée `carto_mat.py` utilise le nouveau moteur.
+Le recalage historique est conservé uniquement pour les objets de grille qui n’activent pas le moteur ; le point d’entrée `cartographe.py` utilise le nouveau moteur.
 
 ## Paramètres initiaux
 
@@ -41,7 +41,7 @@ Ces valeurs sont regroupées dans le moteur et doivent être calibrées avec vos
 `trajectory.csv` contient les poses corrigées après optimisation. `mapping.csv` conserve l’acquisition brute. Une référence doit utiliser les colonnes `timestamp,x,y,theta`, en secondes, mètres, radians, dans **le même repère et avec la même origine temporelle**. L’évaluateur interpole la référence sans extrapolation, ne masque pas un décalage de repère par un ajustement automatique et donne RMSE position, percentile 95 et RMSE angulaire.
 
 ```bash
-python3 atelier_slam/evaluate_trajectory.py \
+python3 atelier_slam/evaluer_trajectoire.py \
   atelier_slam/logs/sessions/MA_SESSION/trajectory.csv \
   reference.csv --output evaluation.json
 ```

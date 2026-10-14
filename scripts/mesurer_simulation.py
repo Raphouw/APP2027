@@ -17,7 +17,7 @@ from pathlib import Path
 
 APP = Path(__file__).resolve().parents[1]/'atelier_slam'
 sys.path.insert(0, str(APP))
-from evaluate_trajectory import evaluate, read_trajectory  # noqa: E402
+from evaluer_trajectoire import evaluate, read_trajectory  # noqa: E402
 
 
 def start(command, out, log):
@@ -43,15 +43,15 @@ def main():
     out = Path(args.output)
     out.mkdir(parents=True)
     start_pose = (1.5, 2.0, 0.0)
-    sim = start(['python3', 'simulator.py', '--truth-csv', str(out/'verite_terrain.csv'), '--noise', str(args.noise),
+    sim = start(['python3', 'simulateur.py', '--truth-csv', str(out/'verite_terrain.csv'), '--noise', str(args.noise),
                  '--seed', str(args.seed)], out, out/'simulateur.log')
     time.sleep(2)
-    nav = start(['python3', 'tb3_nav_node.py', '--ros-args', '-p', 'odometry_only:=true', '-p', f'log_directory:={out}',
+    nav = start(['python3', 'noeud_odometrie.py', '--ros-args', '-p', 'odometry_only:=true', '-p', f'log_directory:={out}',
                  '-p', 'log_filename:=mapping.csv'], out, out/'odometrie.log')
-    carto = start(['python3', 'carto_mat.py', '-m', 'live', '--auto', '--headless', '--output-dir', str(out),
+    carto = start(['python3', 'cartographe.py', '-m', 'live', '--auto', '--headless', '--output-dir', str(out),
                    '-oname', 'map'], out, out/'cartographe.log')
     time.sleep(8)  # calibration IMU, robot immobile
-    driver = start(['python3', 'sim_driver.py', '--laps', str(args.laps)], out, out/'pilote.log')
+    driver = start(['python3', 'pilote_simulation.py', '--laps', str(args.laps)], out, out/'pilote.log')
     try:
         driver.wait()
     except KeyboardInterrupt:

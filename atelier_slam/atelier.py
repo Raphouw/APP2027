@@ -2,7 +2,7 @@
 import os
 import sys
 from pathlib import Path
-# Keep the historical `python3 manager.py` command, with the same clean launch
+# Keep the historical `python3 atelier.py` command, with the same clean launch
 # path as lancer.sh. Module imports in tests never launch a process.
 if __name__ == '__main__' and os.environ.get('TB3_LAUNCH_READY') != '1':
     launcher = Path(__file__).resolve().parents[1]/'lancer.sh'

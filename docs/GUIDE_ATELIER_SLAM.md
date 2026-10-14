@@ -10,7 +10,7 @@ Depuis la racine du projet :
 ./lancer.sh
 ```
 
-Le lanceur charge ROS et vérifie les dépendances sans les réinstaller ni compiler. La commande historique `python3 manager.py`, depuis `atelier_slam`, utilise désormais le même lanceur. Une icône est installable avec `./scripts/installer_icone.sh`. Voir [lancement et diagnostic](LANCEMENT_ET_DIAGNOSTIC.md) pour l’installation initiale éventuelle et la correction du crash natif.
+Le lanceur charge ROS et vérifie les dépendances sans les réinstaller ni compiler. La commande historique `python3 atelier.py`, depuis `atelier_slam`, utilise désormais le même lanceur. Une icône est installable avec `./scripts/installer_icone.sh`. Voir [lancement et diagnostic](LANCEMENT_ET_DIAGNOSTIC.md) pour l’installation initiale éventuelle et la correction du crash natif.
 
 Préparer le pilote du TurtleBot sur le robot, avec un `ROS_DOMAIN_ID` commun aux deux machines. Les entrées attendues sont `/scan`, `/imu` et `/joint_states`. Le projet produit `/my_odom`. Vérifier que les paramètres physiques et les repères du pilote correspondent au robot ; la nouvelle interface ne configure pas le réseau ROS à votre place.
 
@@ -59,8 +59,8 @@ atelier_slam/logs/sessions/<session_id>/
   pose_graph.json     # poses et contraintes, dont fermetures de boucle
   trajectory.csv     # trajectoire corrigée après optimisation
   debug/
-    tb3_nav_node_<heure_id>.log
-    carto_mat_<heure_id>.log
+    noeud_odometrie_<heure_id>.log
+    cartographe_<heure_id>.log
     nav_odom_<heure_id>.log
     rviz2_<heure_id>.log       # si RViz est demandé
     slam_events_<id>.jsonl
@@ -69,7 +69,7 @@ atelier_slam/logs/sessions/<session_id>/
 
 Chaque lancement de processus reçoit **son propre fichier**, même lorsqu’il est relancé dans la même session. La première ligne donne la commande exacte, le dossier de travail et le run du manager. `stderr` rejoint `stdout`, sans tampon Python ; les traces d’exception et de panne Python sont conservées. Les événements SLAM enregistrent pose brute, pose corrigée, transformation persistante, recouvrement, résidu, acceptation/refus, boucles et reconstruction.
 
-Le bouton **Ouvrir les logs de ce run** ouvre le dossier debug de la session, ou celui du manager avant création de session. La barre de statut affiche aussi le chemin du journal du manager. Pour un lancement direct de `tb3_nav_node.py`, `carto_mat.py` ou `nav_odom.py`, un dossier unique est créé sous `logs/standalone_runs/`. `TB3_DEBUG_DIR` permet de choisir un autre dossier racine pour ces lancements directs. Aucun nettoyage automatique des logs n’est effectué.
+Le bouton **Ouvrir les logs de ce run** ouvre le dossier debug de la session, ou celui du manager avant création de session. La barre de statut affiche aussi le chemin du journal du manager. Pour un lancement direct de `noeud_odometrie.py`, `cartographe.py` ou `navigation_carte.py`, un dossier unique est créé sous `logs/standalone_runs/`. `TB3_DEBUG_DIR` permet de choisir un autre dossier racine pour ces lancements directs. Aucun nettoyage automatique des logs n’est effectué.
 
 En cas d’erreur, commencer par `manager.log`, puis le fichier du processus concerné, enfin `slam_events_*.jsonl` pour comprendre les refus de recalage. Les commandes et les chemins enregistrés peuvent contenir des informations propres à la machine : vérifier les fichiers avant partage.
 

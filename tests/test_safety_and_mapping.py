@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'atelier_slam'))
-from dstar_lite import DStarLite
+from planificateur_chemin import DStarLite
 from slam_components.command_ownership import CommandLease
 from slam_components.map_format import load_map
 from slam_components.mapping_io import MappingIOMixin
@@ -68,7 +68,7 @@ class Navigation(MapLocalizationMixin, MapControlMixin):
         self.last_control_time = self.last_relocalize_time = time.monotonic()
         self.relocalize_interval = 10.
         self.enable_visual_relocalization = False
-        self.global_localizer = self.last_camera_frame = None
+        self.relocalisation_visuelle = self.last_camera_frame = None
         self.pid_heading = PIDController(0.9, 0.05, 0.3)
         self.cmd_pub = Mock()
         self.get_logger = lambda: Mock()
@@ -299,7 +299,7 @@ class ImprovementsTests(unittest.TestCase):
         manager._start_map_navigation('/tmp/map.yaml')
         self.assertEqual(events[:2], [('stop', 'odom_proc'), ('stop', 'nav_proc')])
         self.assertIn('odometry_only:=true', events[2][1])
-        self.assertEqual(events[3][1][1], 'nav_odom.py')
+        self.assertEqual(events[3][1][1], 'navigation_carte.py')
 
     def test_manager_does_not_navigate_after_mapping_error(self):
         manager = ManagerProcessesMixin()

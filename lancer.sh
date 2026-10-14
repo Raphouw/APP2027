@@ -44,7 +44,7 @@ fi
 export TB3_LAUNCH_READY=1 TB3_LAUNCH_LOG_DIR="$launch_dir"
 cd "$project_dir"
 set +e
-/usr/bin/python3 -s -X faulthandler "$project_dir/atelier_slam/check_environment.py" --output "$launch_dir"
+/usr/bin/python3 -s -X faulthandler "$project_dir/atelier_slam/diagnostic_environnement.py" --output "$launch_dir"
 check_code=$?
 set -e
 if [[ "$check_code" -ne 0 ]]; then
@@ -63,7 +63,7 @@ if [[ -z "${DISPLAY:-}" ]]; then
   exit 4
 fi
 set +e
-/usr/bin/python3 -s -X faulthandler "$project_dir/atelier_slam/manager.py" "${manager_args[@]}"
+/usr/bin/python3 -s -X faulthandler "$project_dir/atelier_slam/atelier.py" "${manager_args[@]}"
 manager_code=$?
 set -e
 if [[ "$manager_code" -ne 0 ]]; then

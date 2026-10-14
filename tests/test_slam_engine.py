@@ -16,7 +16,7 @@ from slam_components.session_ipc import SessionChannel, atomic_json
 from slam_components.slam_mapping import SlamMappingMixin
 from slam_components.manager_processes import ManagerProcessesMixin
 from test_safety_and_mapping import Grid, Navigation
-from evaluate_trajectory import evaluate
+from evaluer_trajectoire import evaluate
 from slam_components.tk_text import tk_safe_text
 from slam_components.tb3_logging import SessionLoggingMixin, SessionWriter
 

@@ -12,7 +12,7 @@ La commande historique fonctionne également :
 
 ```bash
 cd mapping
-python3 manager.py
+python3 atelier.py
 ```
 
 Elle redirige automatiquement vers le même lanceur. Vous pouvez aussi double-cliquer sur l’icône « Atelier SLAM » créée par `./scripts/installer_icone.sh` ; selon le gestionnaire de fichiers Ubuntu, il faudra autoriser son lancement une première fois. Ce raccourci vise `/home/app-sea/Bureau/APP2027` : si vous déplacez le projet, adapter les champs `Exec` et `Path`. Le script `lancer.sh` lui-même trouve son dossier et fonctionne depuis n’importe quel répertoire.

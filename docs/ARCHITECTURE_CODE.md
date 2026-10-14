@@ -4,7 +4,7 @@ Mise à jour du 7 octobre 2026. Le [résumé initial](archive/RESUME_PROJET_SLAM
 
 ## Points d'entrée
 
-Depuis `atelier_slam/`, les scripts restent `manager.py`, `tb3_nav_node.py`, `carto_mat.py` et `nav_odom.py`. Ils initialisent et assemblent les composants. Les fonctions de traitement sont dans `slam_components/`.
+Depuis `atelier_slam/`, les scripts restent `atelier.py`, `noeud_odometrie.py`, `cartographe.py` et `navigation_carte.py`. Ils initialisent et assemblent les composants. Les fonctions de traitement sont dans `slam_components/`.
 
 | Ensemble | Modules | Responsabilité |
 |---|---|---|
@@ -27,13 +27,13 @@ Depuis `atelier_slam/`, les scripts restent `manager.py`, `tb3_nav_node.py`, `ca
 | Gestionnaire | `manager_ui.py`, `manager_processes.py` | Panneaux, worker, sessions et transitions de processus |
 | Vidéo gestionnaire | `manager_video.py`, `video_dependencies.py`, `system_tools.py` | Affichage, dépendances optionnelles et recherche FFmpeg |
 
-Les autres modules identifiables restent séparés : `dstar_lite.py` (API historique, implémentation A*), `loop_closure.py`, `global_localizer.py`, `video_stream.py` et `ros_raw_stream.py`.
+Les autres modules identifiables restent séparés : `planificateur_chemin.py` (API historique, implémentation A*), `revisites_visuelles.py`, `relocalisation_visuelle.py`, `flux_video.py` et `serveur_camera.py`.
 
 ## Composition
 
 Les mixins apportent des méthodes aux classes principales. Les attributs sont initialisés dans leurs constructeurs et partagés au sein d'un même objet. Ils ne constituent pas des services indépendants et ne doivent pas être instanciés seuls sans leur état requis.
 
-L'odométrie est intégrée lors des mesures de roues. La boucle de commande publie la pose seulement tant que les mesures amont sont fraîches. La navigation sur carte reçoit cette pose depuis `/my_odom`. Le gestionnaire relance le nœud principal en mode odométrie seule avant de transférer la commande à `nav_odom.py`.
+L'odométrie est intégrée lors des mesures de roues. La boucle de commande publie la pose seulement tant que les mesures amont sont fraîches. La navigation sur carte reçoit cette pose depuis `/my_odom`. Le gestionnaire relance le nœud principal en mode odométrie seule avant de transférer la commande à `navigation_carte.py`.
 
 Le cartographe exporte sa grille interne `[x,y]` vers le format commun `[y,x]`. Le navigateur et son affichage utilisent le même chargeur. Les cartes sont liées explicitement à leur session.
 
@@ -65,14 +65,14 @@ Voir [le guide de l’interface](GUIDE_ATELIER_SLAM.md) et [l’algorithme et se
 | `run_logging.py` | Capture console des lancements autonomes |
 | `manager_ui.py` | Parcours guidé, carte intégrée, états et destinations |
 | `manager_processes.py` | Supervision, sessions, logs et cycle de vie |
-| `evaluate_trajectory.py` | Comparaison à une trajectoire de référence |
+| `evaluer_trajectoire.py` | Comparaison à une trajectoire de référence |
 
 La navigation lancée par le manager utilise `--headless --ipc-dir ... --token ...` ; le lancement direct garde sa fenêtre historique. Le cartographe utilise `--headless` dans le manager. Les acquisitions précédentes et les points d’entrée CLI sont conservés.
 
 
 ### Démarrage et panne native
 
-`lancer.sh` prépare un environnement système ROS/Tk cohérent sans installation ; `manager.py` y redirige ses lancements directs. `check_environment.py` sonde les modules natifs dans des sous-processus et archive les résultats. `scripts/installer_dependances.sh` vérifie les paquets et installe uniquement les absents sur demande explicite. `tk_text.py` protège l’affichage contre les pictogrammes hors BMP qui déclenchaient la segmentation de l’ancien manager sur la machine de validation. Voir [le diagnostic détaillé](LANCEMENT_ET_DIAGNOSTIC.md).
+`lancer.sh` prépare un environnement système ROS/Tk cohérent sans installation ; `atelier.py` y redirige ses lancements directs. `diagnostic_environnement.py` sonde les modules natifs dans des sous-processus et archive les résultats. `scripts/installer_dependances.sh` vérifie les paquets et installe uniquement les absents sur demande explicite. `tk_text.py` protège l’affichage contre les pictogrammes hors BMP qui déclenchaient la segmentation de l’ancien manager sur la machine de validation. Voir [le diagnostic détaillé](LANCEMENT_ET_DIAGNOSTIC.md).
 
 
 `lidar_filter.py` partage le filtrage angulaire conservateur entre perception réactive et navigation sur carte. La provenance des petits trous estimés est séparée des rayons bruts. Voir [la correction des oscillations](CORRECTION_OSCILLATIONS_LIDAR.md).

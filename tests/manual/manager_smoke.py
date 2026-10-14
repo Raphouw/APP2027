@@ -11,7 +11,7 @@ sys.path.insert(0, app_dir)
 print("[TEST] Current directory:", os.getcwd(), flush=True)
 
 print("[TEST] Importing manager module...", flush=True)
-from manager import TB3Manager
+from atelier import TB3Manager
 print("[TEST] ✓ Manager module imported", flush=True)
 
 import tkinter as tk

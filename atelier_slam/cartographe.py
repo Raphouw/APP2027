@@ -95,7 +95,7 @@ class Cartographer(SlamMappingMixin, OccupancyGridMixin, MappingIOMixin, Mapping
 
 def main():
     from slam_components.run_logging import install_run_logging
-    install_run_logging('carto_mat')
+    install_run_logging('cartographe')
     parser = argparse.ArgumentParser(description='Cartographie LiDAR live/offline')
     parser.add_argument('-oname', '--output_file_name', default='out')
     parser.add_argument('-m', '--mode', choices=['live', 'offline'], default='live')

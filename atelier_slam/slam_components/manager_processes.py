@@ -154,7 +154,7 @@ class ManagerProcessesMixin:
         self._last_slam = {}
         self._preview_key = None
         self._manifest('mapping')
-        self.nav_proc = self._launch(['python3', 'tb3_nav_node.py', '--ros-args',
+        self.nav_proc = self._launch(['python3', 'noeud_odometrie.py', '--ros-args',
                                     '-p', f'log_directory:={self.session_dir}', '-p', 'log_filename:=mapping.csv'])
 
         if live:
@@ -184,7 +184,7 @@ class ManagerProcessesMixin:
         return process
 
     def _carto_command(self, mode):
-        return ['python3', 'carto_mat.py', '-m', mode, '-i', str(self.session_dir/'mapping.csv'),
+        return ['python3', 'cartographe.py', '-m', mode, '-i', str(self.session_dir/'mapping.csv'),
                 '--auto', '--headless', '--token', getattr(self, 'ipc_token', ''), '--output-dir', str(self.session_dir), '--session-id', self.session_id,
                 '-oname', 'out']
 
@@ -214,7 +214,7 @@ class ManagerProcessesMixin:
         code = self.carto_proc.wait(timeout=300)
         self.carto_proc = None
         if code:
-            raise RuntimeError('Reconstruction échouée. Consultez les logs carto_mat du run.')
+            raise RuntimeError('Reconstruction échouée. Consultez les logs cartographe du run.')
         return self._validate_session_map()
 
     def start_mapping(self):
@@ -245,12 +245,12 @@ class ManagerProcessesMixin:
     def _start_map_navigation(self, yaml_path):
         self._stop_process('odom_proc')
         self._stop_process('nav_proc')
-        self.nav_proc = self._launch(['python3', 'tb3_nav_node.py', '--ros-args',
+        self.nav_proc = self._launch(['python3', 'noeud_odometrie.py', '--ros-args',
                                      '-p', 'odometry_only:=true', '-p', 'use_saved_pose:=true',
                                      '-p', f'log_directory:={self.session_dir}',
                                      '-p', 'log_filename:=navigation_'+uuid.uuid4().hex[:8]+'.csv'])
         self.ipc_token = uuid.uuid4().hex
-        self.odom_proc = self._launch(['python3', 'nav_odom.py', yaml_path, '--headless',
+        self.odom_proc = self._launch(['python3', 'navigation_carte.py', yaml_path, '--headless',
                                        '--ipc-dir', str(self.session_dir), '--token', self.ipc_token])
         self._manifest('navigating')
 
@@ -277,7 +277,7 @@ class ManagerProcessesMixin:
         def work():
             if wanted:
                 truth = Path(self.logs_dir)/'simulation'/('verite_terrain_'+datetime.now().strftime('%Y%m%d_%H%M%S')+'.csv')
-                self.sim_proc = self._launch(['python3', 'simulator.py', '--truth-csv', str(truth)])
+                self.sim_proc = self._launch(['python3', 'simulateur.py', '--truth-csv', str(truth)])
             else:
                 self._stop_process('sim_proc')
         self._job(work, lambda result: self._status(

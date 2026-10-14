@@ -97,9 +97,9 @@ class MapLocalizationMixin:
 
     def relocalize(self):
         # Fonction expérimentale, désactivée par défaut : caméra et PGM ne partagent pas une géométrie validée.
-        if not self.enable_visual_relocalization or self.global_localizer is None or self.last_camera_frame is None:
+        if not self.enable_visual_relocalization or self.relocalisation_visuelle is None or self.last_camera_frame is None:
             return False, None
-        result = self.global_localizer.localize(self.last_camera_frame, min_matches=15)
+        result = self.relocalisation_visuelle.localize(self.last_camera_frame, min_matches=15)
         if result and result['success'] and result['confidence'] > 0.4:
             x, y, theta = result['pose_estimate']
             pose = (self.origin[0]+(x+0.5)*self.res,
