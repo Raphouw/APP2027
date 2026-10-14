@@ -39,6 +39,14 @@ def to_bgr(data, height, width, encoding, step=None):
     """Convertit le tampon d'un sensor_msgs/Image en tableau BGR uint8 (sans cv_bridge)."""
     encoding = encoding.lower()
     raw = np.frombuffer(data, dtype=np.uint8)
+    if encoding in ('nv21', 'nv12'):
+        # Plan Y (h lignes) puis plan UV entrelacé (h/2 lignes) ; `step` = octets par ligne.
+        stride = step or width
+        planes = raw[:stride*height*3//2].reshape(height*3//2, stride)[:, :width]
+        if cv2 is None:
+            raise ValueError(f'{encoding} demande OpenCV (python3-opencv) sur le robot')
+        return cv2.cvtColor(np.ascontiguousarray(planes),
+                            cv2.COLOR_YUV2BGR_NV21 if encoding == 'nv21' else cv2.COLOR_YUV2BGR_NV12)
     channels = {'bgr8': 3, 'rgb8': 3, 'bgra8': 4, 'rgba8': 4, 'mono8': 1, '8uc1': 1, '8uc3': 3,
                 'yuv422_yuy2': 2, 'yuyv': 2, 'yuv422': 2, 'uyvy': 2}.get(encoding)
     if channels is None:
@@ -229,12 +237,15 @@ def run_ros(hub, topic, wait_for_images=None):
 
     rclpy.init()
     node = Node('serveur_camera')
+    warned = set()
 
     def on_image(msg):
         try:
             hub.push(to_bgr(bytes(msg.data), msg.height, msg.width, msg.encoding, msg.step))
         except Exception as exc:
-            log(f'image ignorée : {exc}')
+            if str(exc) not in warned:
+                warned.add(str(exc))
+                log(f'images ignorées ({exc}) ; ce message ne sera pas répété')
 
     node.create_subscription(Image, topic, on_image, qos_profile_sensor_data)
     log(f'abonné à {topic}')
@@ -268,7 +279,8 @@ class CameraRosNode:
         if not shutil.which('ros2'):
             return
         command = ['ros2', 'run', 'camera_ros', 'camera_node', '--ros-args',
-                   '-p', f'width:={width}', '-p', f'height:={height}']
+                   '-p', f'width:={width}', '-p', f'height:={height}',
+                   '-p', 'format:=RGB888', '-p', 'camera:=0']
         log('caméra CSI détectée (unicam) : lancement de camera_ros')
         self.process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         threading.Thread(target=self._relay, daemon=True).start()

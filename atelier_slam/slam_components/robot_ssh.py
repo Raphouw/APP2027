@@ -162,14 +162,15 @@ echo '== modèle'; tr -d '\0' < /proc/device-tree/model 2>/dev/null; echo
 echo '== système'; (lsb_release -ds; uname -r) 2>&1
 echo '== config.txt (caméra)'
 for f in /boot/firmware/config.txt /boot/config.txt; do [ -r "$f" ] && { echo "[$f]"; grep -nE '^[^#]*(camera|imx|dtoverlay|start_x|gpu_mem)' "$f"; }; done; true
-echo '== noyau (journalctl -k / dmesg)'; (journalctl -k --no-pager 2>/dev/null || dmesg 2>/dev/null) | grep -iE 'imx219|unicam|csi|camera|rp1-cfe' | tail -10
+echo '== noyau (10 dernières minutes)'; (journalctl -k --since '-10 min' --no-pager 2>/dev/null || dmesg 2>/dev/null) | grep -iE 'imx219|unicam|csi|camera|rp1-cfe' | tail -10
 echo '== sous-périphériques / media'; ls /dev/v4l-subdev* /dev/media* 2>&1 | head; (media-ctl -p -d /dev/media0 2>&1 | head -25)
 echo '== droits'; id; ls -l /dev/dma_heap 2>&1 | head -5
 echo '== vcgencmd get_camera'; vcgencmd get_camera 2>&1
 echo '== libcamera / rpicam'; (command -v rpicam-hello libcamera-hello || echo 'ni rpicam-hello ni libcamera-hello installé')
 echo '== v4l2-ctl'; (v4l2-ctl --list-devices 2>&1 | head -30) || echo 'v4l-utils absent (sudo apt install v4l-utils)'
 echo '== paquets ROS caméra'; (ros2 pkg list 2>/dev/null | grep -iE 'camera|v4l2|usb_cam') || echo 'aucun'
-echo '== test camera_ros (8 s)'; timeout 8 ros2 run camera_ros camera_node 2>&1 | head -20
+echo '== test camera_ros (8 s)'
+if [ -n "$SKIP_CAMERA_TEST" ]; then echo 'serveur caméra en cours : test ignoré (il utilise déjà la caméra)'; else timeout 8 ros2 run camera_ros camera_node --ros-args -p format:=RGB888 -p camera:=0 2>&1 | grep -E 'ERROR|configured|cameras|imx|failed' | head -10; fi
 echo '== topics images'; (timeout 5 ros2 topic list 2>/dev/null | grep -iE 'image|camera') || echo 'aucun'
 """
 
@@ -417,7 +418,8 @@ class RobotLink:
             return False
         try:
             channel = self._client.get_transport().open_session()
-            channel.exec_command('bash -ic '+shlex.quote(CAMERA_DIAGNOSTIC))
+            prefix = 'SKIP_CAMERA_TEST=1\n' if self._camera is not None else ''
+            channel.exec_command('bash -ic '+shlex.quote(prefix+CAMERA_DIAGNOSTIC))
             self.output.put('--- diagnostic caméra ---')
             buffer = b''
             while True:

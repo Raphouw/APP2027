@@ -26,6 +26,24 @@ class ServerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             cam.to_bgr(b'', 1, 1, 'bayer_rggb8')
 
+    def test_nv21_nv12_colours_and_stride(self):
+        import cv2
+        h, w = 48, 64
+        bgr = np.zeros((h, w, 3), np.uint8)
+        bgr[:, :] = (0, 0, 255)                                   # rouge
+        flat = cv2.cvtColor(bgr, cv2.COLOR_BGR2YUV_I420).reshape(-1)
+        y, u, v = flat[:h*w].reshape(h, w), flat[h*w:h*w*5//4].reshape(h//2, w//2), flat[h*w*5//4:].reshape(h//2, w//2)
+        vu = np.empty((h//2, w), np.uint8)
+        vu[:, 0::2], vu[:, 1::2] = v, u
+        nv21 = np.vstack([y, vu])
+        out = cam.to_bgr(nv21.tobytes(), h, w, 'nv21', step=w)
+        self.assertLessEqual(abs(int(out[5, 5, 2])-255)+int(out[5, 5, 0])+int(out[5, 5, 1]), 6)
+        padded = np.pad(nv21, ((0, 0), (0, 16)))
+        self.assertTrue((cam.to_bgr(padded.tobytes(), h, w, 'nv21', step=w+16) == out).all())
+        uv = np.empty((h//2, w), np.uint8)
+        uv[:, 0::2], uv[:, 1::2] = u, v
+        self.assertTrue((cam.to_bgr(np.vstack([y, uv]).tobytes(), h, w, 'nv12', step=w) == out).all())
+
     def test_row_padding_is_ignored(self):
         data = bytes([1, 2, 3, 0, 0]*2)   # 1 pixel BGR + 2 octets de bourrage par ligne
         self.assertEqual(cam.to_bgr(data, 2, 1, 'bgr8', step=5).shape, (2, 1, 3))
