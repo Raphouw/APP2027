@@ -120,24 +120,82 @@ def serve(hub, port):
         threading.Thread(target=client, args=(connection, address), daemon=True).start()
 
 
+def describe_video_devices():
+    """Texte de diagnostic : périphériques /dev/video*, leur nom et leurs formats (v4l2-ctl si présent)."""
+    import glob
+    import shutil
+    import subprocess
+    devices = sorted(glob.glob('/dev/video*'))
+    if not devices:
+        return 'aucun /dev/video* : pas de caméra USB/V4L2 détectée (une caméra CSI Raspberry Pi n’en crée pas d’utilisable ici)'
+    lines = ['périphériques : '+' '.join(devices)]
+    if shutil.which('v4l2-ctl'):
+        for command in (['v4l2-ctl', '--list-devices'],):
+            try:
+                lines.append(subprocess.run(command, capture_output=True, text=True, timeout=5).stdout.strip())
+            except Exception:
+                pass
+        try:
+            lines.append(subprocess.run(['v4l2-ctl', '-d', devices[0], '--list-formats-ext'],
+                                        capture_output=True, text=True, timeout=5).stdout.strip()[:600])
+        except Exception:
+            pass
+    else:
+        lines.append('(installez `sudo apt install v4l-utils` pour lister les formats)')
+    return '\n'.join(lines)
+
+
+def _open_v4l2(device, width, height):
+    """Ouvre un périphérique avec le backend V4L2 explicite (et non GStreamer) et lit des images d'essai."""
+    candidates = [(cv2.CAP_V4L2, 'MJPG'), (cv2.CAP_V4L2, 'YUYV'), (cv2.CAP_V4L2, None)]
+    for backend, fourcc in candidates:
+        capture = cv2.VideoCapture(device, backend)
+        if not capture.isOpened():
+            capture.release()
+            continue
+        if fourcc:
+            capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*fourcc))
+        capture.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        for _ in range(30):                        # la 1re image d'une webcam met souvent 1 à 2 s
+            ok, frame = capture.read()
+            if ok and frame is not None:
+                log(f'{device} : image reçue (format {fourcc or "par défaut"}, {frame.shape[1]}x{frame.shape[0]})')
+                return capture
+            time.sleep(0.1)
+        capture.release()
+    return None
+
+
 def run_v4l2(hub, device, fps):
     if cv2 is None:
         raise RuntimeError('OpenCV absent : installez `sudo apt install python3-opencv` sur le robot')
-    capture = cv2.VideoCapture(device if not str(device).isdigit() else int(device))
-    if not capture.isOpened():
-        raise RuntimeError(f'impossible d’ouvrir la caméra {device} (branchée ? droits sur /dev/video* ?)')
-    capture.set(cv2.CAP_PROP_FRAME_WIDTH, hub.width)
-    capture.set(cv2.CAP_PROP_FRAME_HEIGHT, hub.height)
-    log(f'caméra V4L2 {device} ouverte')
+    import glob
+    wanted = str(device)
+    if wanted.isdigit():
+        wanted = f'/dev/video{wanted}'
+    # Le périphérique demandé d'abord, puis les autres (sur un Raspberry Pi, video0 n'est souvent pas la caméra).
+    others = [d for d in sorted(glob.glob('/dev/video*'), key=lambda d: int(d[10:] or 0)) if d != wanted]
+    capture = None
+    for candidate in [wanted]+others:
+        log(f'essai de {candidate}…')
+        capture = _open_v4l2(candidate, hub.width, hub.height)
+        if capture is not None:
+            break
+    if capture is None:
+        raise RuntimeError('aucun périphérique vidéo ne délivre d’images.\n'+describe_video_devices()+
+                           '\nCaméra CSI (Raspberry Pi) ? Lancez plutôt un nœud ROS qui publie /camera/image_raw '
+                           '(`sudo apt install ros-humble-camera-ros`, puis `ros2 run camera_ros camera_node`), '
+                           'ou testez la caméra avec `libcamera-hello`.')
     period = 1.0/fps
     failures = 0
     while True:
         started = time.time()
         ok, frame = capture.read()
-        if not ok:
+        if not ok or frame is None:
             failures += 1
             if failures > 50:
-                raise RuntimeError('la caméra ne délivre plus d’images')
+                raise RuntimeError('la caméra a cessé de délivrer des images (câble, alimentation USB ?)')
             time.sleep(0.05)
             continue
         failures = 0
