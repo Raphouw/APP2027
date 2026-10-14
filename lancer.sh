@@ -41,6 +41,11 @@ if [[ -n "${TB3_EXTRA_SETUP:-}" ]]; then
   if [[ ! -f "$TB3_EXTRA_SETUP" ]]; then echo "Overlay absent : $TB3_EXTRA_SETUP"; exit 2; fi
   source "$TB3_EXTRA_SETUP"
 fi
+# Lancé depuis une icône, ce script ne lit pas ~/.bashrc : sans ceci le domaine
+# retombe sur 0 alors que le TurtleBot3 est sur 30 (valeur par défaut de la doc).
+# Pour un autre domaine : ROS_DOMAIN_ID=<n> ./lancer.sh
+export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-${TB3_ROS_DOMAIN_ID:-30}}"
+echo "ROS_DOMAIN_ID=$ROS_DOMAIN_ID"
 export TB3_LAUNCH_READY=1 TB3_LAUNCH_LOG_DIR="$launch_dir"
 cd "$project_dir"
 set +e
