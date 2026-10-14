@@ -10,9 +10,10 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'atelier_slam'))
 from slam_components.manager_ui import ManagerUIMixin
 from slam_components.manager_processes import ManagerProcessesMixin
+from slam_components.manager_ros import ManagerRosMixin
 
 
-class Harness(ManagerUIMixin, ManagerProcessesMixin):
+class Harness(ManagerUIMixin, ManagerProcessesMixin, ManagerRosMixin):
     def __init__(self, root, directory):
         self.root = root
         root.geometry('1280x840')
@@ -48,7 +49,7 @@ class UITests(unittest.TestCase):
         self.assertEqual(str(self.app.btn_stop['state']), 'disabled')
         self.assertEqual(str(self.app.btn_nav['state']), 'disabled')
         self.assertIsNone(self.app.nav_proc)
-        self.assertEqual(len(self.app.book.tabs()), 3)
+        self.assertEqual(len(self.app.book.tabs()), 4)
     def test_mapping_gates_actions_and_busy_keeps_stop_shortcut(self):
         self.app.carto_proc = Mock(poll=lambda: None)
         self.app.refresh_workspace(); self.root.update()
@@ -58,6 +59,16 @@ class UITests(unittest.TestCase):
         self.app.refresh_workspace()
         self.assertEqual(str(self.app.btn_stop['state']), 'disabled')
         self.assertTrue(self.root.bind('<Escape>'))
+    def test_emergency_stop_keeps_map_for_navigation(self):
+        app = self.app
+        app.session_dir = Path(self.directory.name)/'s'; app.session_dir.mkdir()
+        app.session_id = 'sid'
+        app.carto_proc = Mock(poll=lambda: None, returncode=0, pid=1, wait=lambda timeout=None: 0)
+        app._validate_session_map = lambda: setattr(app, 'map_yaml', 'carte.yaml') or 'carte.yaml'
+        app._stop_all()
+        self.assertEqual(app.map_yaml, 'carte.yaml')
+        app.refresh_workspace(); self.root.update()
+        self.assertEqual(str(app.btn_nav['state']), 'normal')
     def test_text_rendering_avoids_native_crash_pictograms(self):
         original = 'Robot '+chr(0x1f916)+' prêt'
         self.app._status(original)

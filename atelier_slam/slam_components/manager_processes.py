@@ -122,12 +122,26 @@ class ManagerProcessesMixin:
         if getattr(self, 'odom_proc', None) is not None:
             self._require_pose = True
         failure = None
+        carto_code = None
+        mapping_was_active = getattr(self, 'carto_proc', None) is not None
         for name in ('odom_proc', 'carto_proc', 'nav_proc', 'rviz_proc'):
             try:
-                self._stop_process(name)
+                code = self._stop_process(name)
+                if name == 'carto_proc':
+                    carto_code = code
             except Exception as exc:
                 failure = exc
-        if self.session_dir is not None:
+        saved = False
+        if mapping_was_active and carto_code == 0 and failure is None and self.session_dir is not None:
+            # Arrêt d'urgence (Échap / bouton rouge) pendant la cartographie : le cartographe
+            # a écrit sa carte en quittant, on la valide pour pouvoir naviguer ensuite.
+            try:
+                self._validate_session_map()
+                saved = True
+            except Exception as exc:
+                if hasattr(self, 'logger'):
+                    self.logger.warning('Carte non récupérée après arrêt : %s', exc)
+        if self.session_dir is not None and not saved:
             self._manifest('failed' if failure else 'stopped')
         if failure:
             raise failure
