@@ -1,4 +1,5 @@
 """Onglet « Robot » : connexion SSH et lancement du bringup depuis l'interface."""
+import queue
 import threading
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -78,6 +79,7 @@ class ManagerRobotMixin:
         self.robot_log.configure(state='disabled')
         self._robot_thread = None
         self._robot_closed = False
+        self._robot_ui_queue = queue.Queue()
         for key in ('host', 'user', 'port'):
             self.robot_vars[key].trace_add('write', lambda *_: self._robot_identity_changed())
         self._robot_refresh_password_note()
@@ -95,13 +97,14 @@ class ManagerRobotMixin:
         values.update(self._robot_extra)
         return values
 
-    def _robot_has_saved(self, settings):
-        return bool(ssh.recall_password(settings))
-
     def _robot_pick_key(self):
         chosen = filedialog.askopenfilename(title='Clé privée SSH', initialdir=str(ssh.Path.home()/'.ssh'))
         if chosen:
             self.robot_vars['key_file'].set(chosen)
+
+    def _robot_ui(self, action):
+        """Fait exécuter `action` par le fil de l'interface (appelable depuis un autre fil)."""
+        self._robot_ui_queue.put(action)
 
     def _robot_run(self, work):
         if self._robot_thread is not None and self._robot_thread.is_alive():
@@ -117,32 +120,52 @@ class ManagerRobotMixin:
                 'Nouveau robot', f'Première connexion à {host}.\n\nEmpreinte : {fingerprint}\n\n'
                 'Faire confiance à ce robot et l’enregistrer ?'))
             done.set()
-        self.root.after(0, ask)
+        self._robot_ui(ask)
         done.wait(120)
         return bool(answer and answer[0])
 
     # -- mot de passe mémorisé (trousseau du système) --------------------------------------
     def _robot_refresh_password_note(self):
+        """Interroge le trousseau hors du fil de l'interface (il peut demander un déverrouillage)."""
         available, reason = ssh.keyring_status()
         self.robot_remember_check.config(state='normal' if available else 'disabled')
         if not available:
-            self.robot_vars['remember_password'].set(False)
-            note, can_forget = reason, False
-        else:
-            settings = self._robot_settings()
-            saved = bool(settings.get('host')) and bool(ssh.recall_password(settings))
-            note = 'Un mot de passe est enregistré pour ce robot : laissez le champ vide.' if saved else ''
-            can_forget = saved
-        self.robot_password_note.config(text=note)
-        self.robot_forget.config(state='normal' if can_forget else 'disabled')
+            self.robot_password_note.config(text=reason)
+            self.robot_forget.config(state='disabled')
+            return
+        settings = self._robot_settings()
+        if not str(settings.get('host', '')).strip():
+            self.robot_password_note.config(text='')
+            self.robot_forget.config(state='disabled')
+            return
+        def work():
+            status, value = ssh.recall_status(settings)
+            self._robot_ui(lambda: self._robot_apply_saved(status, value))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _robot_apply_saved(self, status, message):
+        if self._robot_closed:
+            return
+        notes = {'ok': 'Un mot de passe est enregistré pour ce robot : laissez le champ vide.',
+                 'absent': ('Aucun mot de passe enregistré pour ce robot : saisissez-le une fois, '
+                            'avec la case cochée, puis Connecter.' if self.robot_vars['remember_password'].get() else ''),
+                 'verrouille': message, 'erreur': message}
+        self.robot_password_note.config(text=notes[status], foreground='#b52d3a' if status in ('verrouille', 'erreur') else '')
+        if status == 'ok':
+            self.robot_vars['remember_password'].set(True)     # un mot de passe est bien mémorisé
+        self.robot_forget.config(state='normal' if status == 'ok' else 'disabled')
 
     def _robot_identity_changed(self):
-        self._robot_refresh_password_note()
         self._robot_fill_camera_address()
+        if getattr(self, '_robot_note_timer', None) is not None:
+            self.root.after_cancel(self._robot_note_timer)
+        self._robot_note_timer = self.root.after(700, self._robot_refresh_password_note)
 
     def _robot_remember_toggled(self):
         if not self.robot_vars['remember_password'].get():
             self.robot_forget_clicked()
+        ssh.save_settings(self._robot_settings())      # l'état de la case survit aux relances
+        self._robot_refresh_password_note()
 
     def robot_forget_clicked(self):
         ssh.forget_password(self._robot_settings())
@@ -159,16 +182,24 @@ class ManagerRobotMixin:
         settings = self._robot_settings()
         typed = self.robot_vars['password'].get()
         remember = bool(self.robot_vars['remember_password'].get())
-        password = typed or (ssh.recall_password(settings) if remember or self._robot_has_saved(settings) else '')
         def work():
+            password = typed
+            if not typed:
+                status, value = ssh.recall_status(settings)
+                if status in ('verrouille', 'erreur') and remember:
+                    self.robot.output.put('[trousseau] '+value)
+                    self.robot._set(ssh.ERROR, value)
+                    return
+                password = value if status == 'ok' else ''
             if self.robot.connect(settings, password, self._robot_ask_host_key):
                 ssh.save_settings(settings)
                 if remember and typed:
                     try:
                         ssh.remember_password(settings, typed)
+                        self.robot.output.put('[trousseau] Mot de passe enregistré pour '+settings['user']+'@'+settings['host']+'.')
                     except Exception as exc:
-                        self.robot.output.put('[trousseau] Mot de passe non enregistré : '+str(exc))
-                self.root.after(0, self._robot_refresh_password_note)
+                        self.robot.output.put('[trousseau] Mot de passe NON enregistré : '+str(exc))
+                self._robot_ui(self._robot_refresh_password_note)
         self._robot_run(work)
         self.robot_vars['password'].set('')   # le mot de passe ne reste pas affiché
 
@@ -184,7 +215,7 @@ class ManagerRobotMixin:
         def work():
             if self.robot.start_camera(settings):
                 url = ssh.camera_url(settings)
-                self.root.after(0, lambda: self._robot_show_camera_url(url))
+                self._robot_ui(lambda: self._robot_show_camera_url(url))
         self._robot_run(work)
 
     def _robot_show_camera_url(self, url):
@@ -211,6 +242,11 @@ class ManagerRobotMixin:
     def _robot_refresh(self):
         if self._robot_closed:
             return
+        while not self._robot_ui_queue.empty():
+            try:
+                self._robot_ui_queue.get_nowait()()
+            except Exception:
+                pass
         link = self.robot
         self.robot_status.config(text=link.message+('   ·   '+link.camera_message if link.camera_message else ''),
                                  foreground=STATE_COLORS.get(link.state, '#5a6b7b'))

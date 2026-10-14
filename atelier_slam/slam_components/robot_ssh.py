@@ -75,12 +75,26 @@ def remember_password(settings, password):
     keyring.set_password(KEYRING_SERVICE, _account(settings), password)
 
 
-def recall_password(settings):
+def recall_status(settings):
+    """('ok', mot_de_passe) | ('absent', '') | ('verrouille', message) | ('erreur', message)."""
     try:
         import keyring
-        return keyring.get_password(KEYRING_SERVICE, _account(settings)) or ''
-    except Exception:
-        return ''
+        from keyring import errors
+    except ImportError:
+        return 'erreur', 'Module keyring absent : installez python3-keyring.'
+    try:
+        value = keyring.get_password(KEYRING_SERVICE, _account(settings))
+    except errors.KeyringLocked:
+        return 'verrouille', ('Le trousseau est verrouillé : déverrouillez-le (mot de passe de votre session), '
+                              'puis réessayez, ou utilisez une clé SSH.')
+    except Exception as exc:
+        return 'erreur', 'Trousseau illisible ('+str(exc)+') : utilisez une clé SSH.'
+    return ('ok', value) if value else ('absent', '')
+
+
+def recall_password(settings):
+    status, value = recall_status(settings)
+    return value if status == 'ok' else ''
 
 
 def forget_password(settings):

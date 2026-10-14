@@ -4,6 +4,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'atelier_slam'))
 from slam_components import robot_ssh as r
@@ -126,6 +127,21 @@ class PasswordMemoryTests(unittest.TestCase):
         self.assertTrue(r.forget_password(settings))
         self.assertEqual(r.recall_password(settings), '')
         self.assertFalse(r.forget_password(settings))
+
+    def test_recall_status_distinguishes_absent_locked_and_broken(self):
+        import keyring
+        from keyring import errors
+        settings = dict(GOOD, host='robot.local')
+        self.assertEqual(r.recall_status(settings), ('absent', ''))
+        r.remember_password(settings, 'secret')
+        self.assertEqual(r.recall_status(settings), ('ok', 'secret'))
+        with patch.object(keyring, 'get_password', side_effect=errors.KeyringLocked('verrouillé')):
+            status, message = r.recall_status(settings)
+            self.assertEqual(status, 'verrouille')
+            self.assertIn('verrouillé', message)
+            self.assertEqual(r.recall_password(settings), '')
+        with patch.object(keyring, 'get_password', side_effect=RuntimeError('dbus')):
+            self.assertEqual(r.recall_status(settings)[0], 'erreur')
 
     def test_nothing_secret_reaches_the_settings_file(self):
         with tempfile.TemporaryDirectory() as directory:

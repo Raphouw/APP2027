@@ -21,3 +21,5 @@ Prérequis : `python3-paramiko` (installé par `./scripts/installer_dependances.
 Vérifié : tests unitaires et tests contre un vrai serveur SSH local simulé (mot de passe, empreinte, bringup, Ctrl-C). Non vérifié sur un vrai TurtleBot3.
 
 **Caméra** : l'adresse du robot et le port caméra (9999 par défaut) remplissent automatiquement le champ « Adresse du flux » de l'onglet « Caméra optionnelle » dès que l'adresse du robot est saisie.
+
+**Si le mot de passe n'est pas repris** : l'onglet l'indique sous le champ. « Aucun mot de passe enregistré pour ce robot » : saisissez-le une fois avec la case cochée puis *Connecter* (il n'est enregistré qu'après une connexion réussie, pour l'adresse et l'utilisateur exacts ; une autre adresse, par exemple un nom au lieu d'une IP, compte comme un autre robot). « Le trousseau est verrouillé » : déverrouillez-le avec le mot de passe de votre session Ubuntu (au démarrage avec connexion automatique, il reste verrouillé), puis réessayez. L'état de la case est conservé d'une session à l'autre.
