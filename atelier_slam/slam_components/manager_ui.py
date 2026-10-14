@@ -90,6 +90,8 @@ class ManagerUIMixin:
         self.path_artist, = self.ax.plot([], [], color='#1486a7', lw=1.8)
         self.robot_artist, = self.ax.plot([], [], 'o', color='#e46532', ms=8)
         self.goal_artist, = self.ax.plot([], [], '+', color='#b52d3a', ms=14, mew=2)
+        # Obstacles absents de la carte initiale, vus par le LiDAR pendant la navigation (la carte reste noire/blanche).
+        self.new_obstacle_artist, = self.ax.plot([], [], 's', color='#e0218a', ms=4, mec='none', alpha=.9, zorder=5)
         self.canvas = FigureCanvasTkAgg(self.figure, map_tab)
         self.canvas.get_tk_widget().pack(fill='both', expand=True)
         self.toolbar = NavigationToolbar2Tk(self.canvas, map_tab, pack_toolbar=False)
@@ -115,7 +117,7 @@ class ManagerUIMixin:
             'Replacer le robot : en navigation, sélectionnez cet outil puis tracez sa direction.\n'
             'Une carte ancienne nécessite une reconstruction CSV. Une session rouverte exige\n'
             'de replacer le robot : sa position physique a pu changer.\n'
-            'Blanc : libre · gris : inconnu · noir : obstacle · orange : robot · bleu : trajet.\n'
+            'Blanc : libre · gris : inconnu · noir : obstacle de la carte · rose : nouvel obstacle · orange : robot · bleu : trajet.\n'
             'La barre sous la carte permet de zoomer et de déplacer la vue.')).pack(anchor='w', pady=(0, 12))
         self.journal = tk.Text(journal_tab, height=12, wrap='word', bg='white', fg='#18293d', relief='flat', padx=12, pady=12)
         self.journal.pack(fill='both', expand=True)
@@ -265,7 +267,7 @@ class ManagerUIMixin:
             self.empty_hint.set_visible(True)
             if self.map_artist is not None:
                 self.map_artist.set_visible(False)
-            for artist in (self.path_artist, self.robot_artist, self.goal_artist):
+            for artist in (self.path_artist, self.robot_artist, self.goal_artist, self.new_obstacle_artist):
                 artist.set_data([], [])
         if self.session_dir:
             self.session_label.config(text='Session\n'+tk_safe_text(self.session_dir.name))
@@ -288,6 +290,9 @@ class ManagerUIMixin:
             if data.get('path') is not None:
                 points = np.asarray(data['path'])
                 self.path_artist.set_data(points[:, 0] if len(points) else [], points[:, 1] if len(points) else [])
+            if 'new_obstacles' in data:
+                found = np.asarray(data['new_obstacles'])
+                self.new_obstacle_artist.set_data(found[:, 0] if len(found) else [], found[:, 1] if len(found) else [])
             if 'goal' in data:
                 goal = data['goal']
                 self.goal_artist.set_data([goal[0]] if goal else [], [goal[1]] if goal else [])
@@ -367,8 +372,11 @@ class ManagerUIMixin:
         if mapping and not self._read_status('slam_status.json').get('scans', 0):
             self._status('Attendez le premier scan synchronisé avant de choisir une destination.')
             return
-        if self._require_pose or self._pending_pose_id or not self._last_health.get('calibrated') or not all(self._last_health.get(k) for k in ('imu', 'wheels', 'lidar')):
-            self._status('Destination indisponible : vérifier la pose et attendre les capteurs.')
+        problem = self._destination_problem(navigating)
+        if problem:
+            if navigating and (self._require_pose or self._pending_pose_id):
+                self.click_mode.set('pose')   # le prochain clic-glisser replace le robot
+            self._status(problem)
             return
         if self._preview_extent and not (self._preview_extent[0] <= start[0] < self._preview_extent[1] and self._preview_extent[2] <= start[1] < self._preview_extent[3]):
             self._status('Choisissez une destination dans la carte.')
@@ -376,6 +384,23 @@ class ManagerUIMixin:
         self._channel('navigation' if navigating else 'mapping').send('goal', start)
         self.goal_artist.set_data([start[0]], [start[1]])
         self._status(f'Destination envoyée : x={start[0]:.2f} m, y={start[1]:.2f} m.')
+
+    def _destination_problem(self, navigating):
+        """Pourquoi une destination est refusée (None si elle est acceptable), en termes d'action à faire."""
+        health = self._last_health
+        if self._pending_pose_id:
+            return 'Position du robot en cours de prise en compte : patientez une seconde, puis recliquez.'
+        if self._require_pose:
+            return ('Position du robot inconnue : le mode « Replacer le robot » est sélectionné. '
+                    'Cliquez sur la carte à l’endroit où se trouve le robot (glissez pour donner son orientation).')
+        if not health.get('calibrated'):
+            return 'Calibration IMU en cours : gardez le robot immobile quelques secondes.'
+        missing = [name for key, name in (('imu', 'IMU'), ('wheels', 'roues'), ('lidar', 'LiDAR')) if not health.get(key)]
+        if missing:
+            return 'Capteurs en attente : '+', '.join(missing)+'. Vérifiez la simulation ou le robot.'
+        if navigating and self._last_navigation.get('state') == 'WAITING_SENSORS':
+            return 'Le navigateur attend des mesures fraîches : patientez un instant.'
+        return None
 
     def _channel(self, role):
         return SessionChannel(self.session_dir, self.ipc_token, role)

@@ -23,6 +23,6 @@ HORIZON = 1.5                 # m, portion de chemin surveillée pour détecter 
 REPLAN_MIN_PERIOD = 0.4       # s entre deux calculs de chemin
 OBSTACLE_TTL = 1.5            # s, un obstacle nouveau bloque la planification
 OBSTACLE_DISPLAY_TTL = 8.0    # s, il reste affiché en couleur
-KNOWN_TOLERANCE = 0.10        # m, un écho à moins de cela d'un mur de la carte n'est pas « nouveau »
+KNOWN_TOLERANCE = 0.12        # m, un écho à moins de cela d'un mur de la carte (après recalage) n'est pas « nouveau »
 GOAL_SNAP_RADIUS = 0.60       # m, une destination dans une zone interdite est ramenée au libre le plus proche
 START_SNAP_RADIUS = 0.40      # m, idem pour le robot collé à un mur

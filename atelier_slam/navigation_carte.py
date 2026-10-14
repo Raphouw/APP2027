@@ -40,6 +40,7 @@ class TurtleController(MapLocalizationMixin, MapControlMixin, Node):
         distance = distance_transform_edt(~not_free)*res
         soft = np.clip((self.clearance+SOFT_MARGIN-distance)/SOFT_MARGIN, 0.0, 1.0)
         self.soft_cost = SOFT_WEIGHT*soft*soft
+        self.wall_distance = distance
 
     def __init__(self, yaml_path, shared_data, channel=None):
         super().__init__('turtle_controller')
@@ -104,6 +105,7 @@ class TurtleController(MapLocalizationMixin, MapControlMixin, Node):
             if channel and time.monotonic()-getattr(self, '_status_time', 0) > .2:
                 channel.status(dict(state=self.shared_data.get('state'), pose=self.robot_pos,
                                     path=list(self.path), goal=self.shared_data.get('goal'),
+                                    new_obstacles=list(self.shared_data.get('new_obstacles', [])),
                                     pose_received=self.shared_data.get('pose_received', False),
                                     pose_command_id=getattr(self, '_pose_command_id', None)))
                 self._status_time = time.monotonic()

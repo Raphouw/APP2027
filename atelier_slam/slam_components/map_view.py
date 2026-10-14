@@ -90,6 +90,11 @@ def plotter_process(shared_data, yaml_path):
                 lx, ly = zip(*lidar_pts)
                 ax.scatter(lx, ly, s=3, c='#e74c3c', alpha=0.8)
             
+            new_obstacles = shared_data.get('new_obstacles', [])
+            if new_obstacles:
+                nx, ny = zip(*new_obstacles)
+                ax.scatter(nx, ny, s=22, marker='s', c='#e0218a', zorder=6, label='Nouvel obstacle')
+
             if path:
                 px, py = zip(*path)
                 ax.plot(px, py, 'b-', lw=2)

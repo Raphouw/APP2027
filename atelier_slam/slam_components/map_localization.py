@@ -84,8 +84,9 @@ class MapLocalizationMixin:
         hits_r, hits_c = ranges[finite], angles[finite]
         xs, ys = rx+hits_r*np.cos(yaw+hits_c), ry+hits_r*np.sin(yaw+hits_c)
         points = list(zip(xs.tolist(), ys.tolist()))
-        cols = np.floor((xs-self.origin[0])/self.res).astype(int)
-        rows = np.floor((ys-self.origin[1])/self.res).astype(int)
+        sx, sy = self._align_to_map(xs, ys)
+        cols = np.floor((sx-self.origin[0])/self.res).astype(int)
+        rows = np.floor((sy-self.origin[1])/self.res).astype(int)
         inside = (rows >= 0) & (rows < self.h) & (cols >= 0) & (cols < self.w)
         rows, cols = rows[inside], cols[inside]
         known_zone = getattr(self, 'known_zone', None)
@@ -105,6 +106,36 @@ class MapLocalizationMixin:
             if seen is not None:
                 seen[cell] = now
         self.shared_data['lidar_pts'] = points[::8]
+
+    def _align_to_map(self, xs, ys):
+        """Décalage (x, y) qui plaque au mieux les échos sur les murs de la carte.
+
+        L'odométrie dérive : sans correction, des murs connus apparaissent « nouveaux ».
+        Recherche exhaustive d'une translation (±0,4 m), score = distance moyenne tronquée
+        aux murs, avec un léger rappel vers le décalage précédent. Les vrais obstacles
+        nouveaux sont des valeurs aberrantes tronquées : ils ne tirent pas le résultat.
+        """
+        wall_distance = getattr(self, 'wall_distance', None)
+        if wall_distance is None or len(xs) < 20:
+            return xs, ys
+        steps = max(1, int(math.ceil(0.4/self.res)))
+        offsets = np.arange(-steps, steps+1)*self.res
+        dx, dy = np.meshgrid(offsets, offsets)
+        dx, dy = dx.ravel()[:, None], dy.ravel()[:, None]
+        cols = np.floor((xs[None, :]+dx-self.origin[0])/self.res).astype(int)
+        rows = np.floor((ys[None, :]+dy-self.origin[1])/self.res).astype(int)
+        inside = (rows >= 0) & (rows < self.h) & (cols >= 0) & (cols < self.w)
+        cap = 0.3
+        values = np.full(rows.shape, cap)
+        values[inside] = np.minimum(wall_distance[rows[inside], cols[inside]], cap)
+        previous = getattr(self, 'map_shift', (0.0, 0.0))
+        score = values.mean(axis=1)+0.05*np.hypot(dx[:, 0]-previous[0], dy[:, 0]-previous[1])
+        best = int(np.argmin(score))
+        zero = int(np.argmin(np.hypot(dx[:, 0], dy[:, 0])))
+        if score[best] > score[zero]-0.005:
+            best = zero
+        self.map_shift = (float(dx[best, 0]), float(dy[best, 0]))
+        return xs+dx[best, 0], ys+dy[best, 0]
 
     def camera_cb(self, msg):
         if not self.enable_visual_relocalization:

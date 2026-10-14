@@ -274,7 +274,14 @@ class ManagerProcessesMixin:
                 raise ValueError('Générer la carte de la session avant la navigation.')
             self._validate_session_map()
             self._start_map_navigation(self.map_yaml)
-        self._job(work, lambda result: self._status('Navigation prête : choisir une destination sur la carte.'))
+        def done(result):
+            if self._require_pose:
+                self.click_mode.set('pose')
+                self._status('Navigation prête. Replacez d’abord le robot : cliquez sur la carte là où il se trouve '
+                             '(glissez pour son orientation), puis choisissez une destination.')
+            else:
+                self._status('Navigation prête : choisir une destination sur la carte.')
+        self._job(work, done)
 
     def toggle_simulation(self):
         """Démarre ou arrête le robot simulé (sans Gazebo), seulement hors session."""
