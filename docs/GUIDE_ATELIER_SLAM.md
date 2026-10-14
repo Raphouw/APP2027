@@ -61,7 +61,7 @@ atelier_slam/logs/sessions/<session_id>/
   debug/
     noeud_odometrie_<heure_id>.log
     cartographe_<heure_id>.log
-    nav_odom_<heure_id>.log
+    navigation_carte_<heure_id>.log
     rviz2_<heure_id>.log       # si RViz est demandé
     slam_events_<id>.jsonl
     ros/<launch_id>/          # logs ROS natifs des sous-processus
