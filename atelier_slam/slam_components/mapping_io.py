@@ -61,6 +61,8 @@ class MappingIOMixin:
         return count
 
     def save_map(self):
+        if hasattr(self, 'flush_raster'):
+            self.flush_raster()
         if self.scan_counter == 0:
             raise ValueError('Aucun scan traité : sauvegarde refusée.')
         out = Path(getattr(self, 'output_dir', './logs'))

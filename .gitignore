@@ -15,3 +15,4 @@ atelier_slam/logs/last_pose.txt
 *.egg-info/
 atelier_slam/logs/simulation/
 atelier_slam/logs/standalone_runs/
+atelier_slam/logs/ros_graph.json

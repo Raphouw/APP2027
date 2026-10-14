@@ -46,16 +46,23 @@ class OccupancyGridMixin:
 
     def get_free_indices(self, xr, yr, x_obs, y_obs):
         # Tracé entier par rayon, sans inclure son extrémité occupée.
-        result = set()
-        for xe, ye in zip(x_obs, y_obs):
-            steps = int(max(abs(xe-xr), abs(ye-yr)))
-            if steps:
-                t = np.arange(steps)/steps
-                result.update(zip(np.rint(xr+t*(xe-xr)).astype(int), np.rint(yr+t*(ye-yr)).astype(int)))
-        if not result:
+        # Version vectorisée : mêmes cellules (triées par x puis y) que le tracé rayon par rayon.
+        x_obs, y_obs = np.asarray(x_obs), np.asarray(y_obs)
+        steps = np.maximum(np.abs(x_obs-xr), np.abs(y_obs-yr)).astype(int)
+        keep = steps > 0
+        steps, xe, ye = steps[keep], x_obs[keep], y_obs[keep]
+        if not len(steps):
             return np.array([], dtype=int), np.array([], dtype=int)
-        points = np.array(sorted(result))
-        return points[:, 0], points[:, 1]
+        total = int(steps.sum())
+        ray = np.repeat(np.arange(len(steps)), steps)
+        first = np.cumsum(steps)-steps
+        t = (np.arange(total)-first[ray])/steps[ray]
+        xs = np.rint(xr+t*(xe[ray]-xr)).astype(int)
+        ys = np.rint(yr+t*(ye[ray]-yr)).astype(int)
+        x_min, y_min = xs.min(), ys.min()
+        width = int(ys.max()-y_min+1)
+        keys = np.unique((xs-x_min)*width+(ys-y_min))
+        return keys//width+x_min, keys % width+y_min
 
     def write_map(self, x, y):
         valid = np.isfinite(x) & np.isfinite(y) & (x*x+y*y > 0) & (x*x+y*y <= self.dist_max_lidar**2+1e-9)
@@ -76,13 +83,14 @@ class OccupancyGridMixin:
         self.path_x.append(self.x)
         self.path_y.append(self.y)
         fx, fy = self.get_free_indices(int(round(self.x)), int(round(self.y)), px, py)
-        occupied = set(zip(px[hits], py[hits]))
-        free = (set(zip(fx, fy)) | set(zip(px[~hits], py[~hits])))-occupied
+        # Cellules uniques, repérées par un indice linéaire dans la grille (toutes dans la grille ici).
+        size = self.size
+        occupied = np.unique(px[hits]*size+py[hits])
+        free = np.setdiff1d(np.union1d(fx*size+fy, px[~hits]*size+py[~hits]), occupied, assume_unique=True)
         self.scan_counter += 1
         for cells, delta in [(free, self.log_free), (occupied, self.log_occ)]:
-            if cells:
-                indices = np.array(sorted(cells))
-                xx, yy = indices[:, 0], indices[:, 1]
+            if len(cells):
+                xx, yy = cells//size, cells % size
                 self.map_logodd[xx, yy] += delta
                 self.cell_update_time[xx, yy] = self.scan_counter
         current = 1/(1+np.exp(-np.clip(self.map_logodd, -3, 3)))

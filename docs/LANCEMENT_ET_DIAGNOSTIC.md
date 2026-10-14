@@ -21,7 +21,7 @@ Le lanceur :
 
 1. choisit le Python système `/usr/bin/python3`, compatible avec les paquets ROS installés ;
 2. retire les chemins Python, Qt et bibliothèques natives hérités d’environnements Conda/venv, puis charge `/opt/ros/humble/setup.bash` ;
-3. conserve les paramètres réseau ROS, notamment `ROS_DOMAIN_ID` ;
+3. conserve les paramètres réseau ROS ; `ROS_DOMAIN_ID` vaut **30 par défaut** (ou `TB3_ROS_DOMAIN_ID` s'il est défini) et s'affiche au démarrage. Pour un autre domaine : `ROS_DOMAIN_ID=<n> ./lancer.sh` ;
 4. force le backend graphique TkAgg et utilise un cache Matplotlib dans le projet ;
 5. vérifie les modules dans des processus séparés, avec traces de panne native ;
 6. démarre le manager, qui supervise la cartographie et la navigation.

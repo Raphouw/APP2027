@@ -10,9 +10,17 @@ from .slam_engine import SlamEngine, PoseBuffer
 from .map_format import encode_probability
 
 
+# Après une fermeture de boucle, la grille doit être reconstruite depuis toutes les observations.
+# Pour tenir le temps réel, on attend au moins ce nombre de scans entre deux reconstructions
+# (la première est immédiate) ; `flush_raster` termine le travail avant toute sauvegarde.
+REBUILD_EVERY_SCANS = 20
+
+
 class SlamMappingMixin:
     def initialize_slam(self):
         self.slam = SlamEngine()
+        self._raster_revision = 0
+        self._scans_since_rebuild = REBUILD_EVERY_SCANS
         self.pose_buffer = PoseBuffer()
         self.unsynchronized_scans = 0
         self._preview_time = 0
@@ -26,14 +34,12 @@ class SlamMappingMixin:
         self.scan_stamps.append(stamp)
         revision = self.slam.revision
         pose = self.slam.update(odom, points, self.scan_hits)
-        if revision != self.slam.revision:
-            # Rebuild ALL retained observations, including free-space rays.
-            for name, fill in [('map', .5), ('map_logodd', 0.), ('cell_update_time', 0),
-                               ('cell_change_count', 0), ('cell_prev_state', .5)]:
-                getattr(self, name).fill(fill)
-            self.path_x, self.path_y, self.scan_counter = [], [], 0
-            for past_pose, past_points, hits in self.slam.scans():
-                self._raster_scan(past_pose, past_points, hits)
+        self._scans_since_rebuild += 1
+        rebuilt = False
+        if (self.slam.revision != self._raster_revision
+                and self._scans_since_rebuild >= REBUILD_EVERY_SCANS):
+            self._rebuild_raster()
+            rebuilt = True
         else:
             self._raster_scan(pose, points, self.scan_hits)
         debug_dir = Path(self.output_dir)/'debug'
@@ -42,10 +48,26 @@ class SlamMappingMixin:
             self._events_path = debug_dir/('slam_events_'+uuid.uuid4().hex[:12]+'.jsonl')
         event = self.slam.diagnostics()
         event.update(updated_at=time.time(), odom=np.asarray(odom).tolist(), scans=self.scan_counter,
-                     rebuilt=revision != self.slam.revision, unsynchronized_scans=self.unsynchronized_scans)
+                     rebuilt=rebuilt, unsynchronized_scans=self.unsynchronized_scans)
         with self._events_path.open('a') as stream:
             stream.write(json.dumps(event, allow_nan=False)+'\n')
         self.write_preview()
+
+    def _rebuild_raster(self):
+        # Rebuild ALL retained observations, including free-space rays.
+        for name, fill in [('map', .5), ('map_logodd', 0.), ('cell_update_time', 0),
+                           ('cell_change_count', 0), ('cell_prev_state', .5)]:
+            getattr(self, name).fill(fill)
+        self.path_x, self.path_y, self.scan_counter = [], [], 0
+        for past_pose, past_points, hits in self.slam.scans():
+            self._raster_scan(past_pose, past_points, hits)
+        self._raster_revision = self.slam.revision
+        self._scans_since_rebuild = 0
+
+    def flush_raster(self):
+        """Termine une reconstruction différée (à appeler avant d'enregistrer la carte)."""
+        if getattr(self, 'slam', None) is not None and self.slam.revision != self._raster_revision:
+            self._rebuild_raster()
 
     def _raster_scan(self, pose, points, hits):
         self.x, self.y = pose[:2]*self.scale + [self.x0, self.y0]
