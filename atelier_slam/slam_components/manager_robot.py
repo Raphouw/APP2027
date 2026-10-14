@@ -19,7 +19,7 @@ class ManagerRobotMixin:
                                ros_domain_id=tk.StringVar(value=str(settings['ros_domain_id'])),
                                model=tk.StringVar(value=settings['model']), lds_model=tk.StringVar(value=settings['lds_model']),
                                password=tk.StringVar())
-        self._robot_extra = {k: settings[k] for k in ('ros_distro', 'bringup_command')}
+        self._robot_extra = {k: settings[k] for k in ('ros_distro', 'bringup_command', 'camera_port')}
         form = ttk.Frame(tab)
         form.pack(fill='x')
         rows = [('Adresse du robot', 'host', 'ex. 192.168.1.50 ou turtlebot.local'), ('Utilisateur', 'user', ''),
@@ -53,7 +53,11 @@ class ManagerRobotMixin:
         self.robot_stop = ttk.Button(buttons, text='Arrêter le bringup', command=self.robot_stop_clicked)
         self.robot_stop.pack(side='left', padx=(0, 8))
         self.robot_disconnect = ttk.Button(buttons, text='Déconnecter', command=self.robot_disconnect_clicked)
-        self.robot_disconnect.pack(side='left')
+        self.robot_disconnect.pack(side='left', padx=(0, 18))
+        self.robot_camera_start = ttk.Button(buttons, text='Lancer la caméra', command=self.robot_camera_start_clicked)
+        self.robot_camera_start.pack(side='left', padx=(0, 8))
+        self.robot_camera_stop = ttk.Button(buttons, text='Arrêter la caméra', command=self.robot_camera_stop_clicked)
+        self.robot_camera_stop.pack(side='left')
         self.robot_status = ttk.Label(tab, text=self.robot.message, font=('DejaVu Sans', 11, 'bold'), wraplength=800)
         self.robot_status.pack(anchor='w', pady=(0, 6))
         self.robot_log = tk.Text(tab, height=12, wrap='word', bg='#0f1b2a', fg='#d6e4f2', relief='flat', padx=10, pady=8)
@@ -113,6 +117,24 @@ class ManagerRobotMixin:
     def robot_stop_clicked(self):
         self._robot_run(self.robot.stop_bringup)
 
+    def robot_camera_start_clicked(self):
+        settings = self._robot_settings()
+        def work():
+            if self.robot.start_camera(settings):
+                url = ssh.camera_url(settings)
+                self.root.after(0, lambda: self._robot_show_camera_url(url))
+        self._robot_run(work)
+
+    def _robot_show_camera_url(self, url):
+        """Pré-remplit l'onglet Caméra avec l'adresse du serveur qui vient d'être lancé."""
+        entry = getattr(self, 'rtsp_entry', None)
+        if entry is not None:
+            entry.delete(0, 'end')
+            entry.insert(0, url)
+
+    def robot_camera_stop_clicked(self):
+        self._robot_run(self.robot.stop_camera)
+
     def robot_disconnect_clicked(self):
         self._robot_run(self.robot.disconnect)
 
@@ -128,7 +150,8 @@ class ManagerRobotMixin:
         if self._robot_closed:
             return
         link = self.robot
-        self.robot_status.config(text=link.message, foreground=STATE_COLORS.get(link.state, '#5a6b7b'))
+        self.robot_status.config(text=link.message+('   ·   '+link.camera_message if link.camera_message else ''),
+                                 foreground=STATE_COLORS.get(link.state, '#5a6b7b'))
         busy = self._robot_thread is not None and self._robot_thread.is_alive()
         connected = link.state in (ssh.CONNECTED, ssh.BRINGUP)
         def enable(widget, on):
@@ -137,6 +160,8 @@ class ManagerRobotMixin:
         enable(self.robot_bringup, link.state == ssh.CONNECTED)
         enable(self.robot_stop, link.state == ssh.BRINGUP)
         enable(self.robot_disconnect, connected)
+        enable(self.robot_camera_start, connected and not link.camera_running)
+        enable(self.robot_camera_stop, link.camera_running)
         lines = []
         while not link.output.empty() and len(lines) < 200:
             lines.append(link.output.get())

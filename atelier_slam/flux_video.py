@@ -49,6 +49,7 @@ class RTSPStreamReader:
         self.thread = None
         self.process = None
 
+        self.error = ''
         self.frame_count = 0
         self.fps_actual = 0
         self.last_fps_time = time.time()
@@ -99,8 +100,24 @@ class RTSPStreamReader:
             host = url_parts[0]
             port = int(url_parts[1]) if len(url_parts) > 1 else 9999
 
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((host, port))
+            sock = None
+            while self.is_running and sock is None:
+                # Le serveur peut démarrer après le client (lancement depuis l'onglet Robot) : on réessaie.
+                candidate = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                candidate.settimeout(3)
+                try:
+                    candidate.connect((host, port))
+                except OSError as exc:
+                    candidate.close()
+                    self.error = ('Aucun serveur caméra ne répond sur le robot (nouvel essai toutes les 2 s). '
+                                  'Onglet « Robot (SSH) » → « Lancer la caméra ». ') + f'({exc})'
+                    time.sleep(2)
+                    continue
+                candidate.settimeout(None)
+                sock = candidate
+            if sock is None:
+                return
+            self.error = ''
             print(f"[RTSP] ✓ Connecté à {host}:{port}")
 
             frame_size = self.width * self.height * 3  # BGR24
@@ -114,6 +131,7 @@ class RTSPStreamReader:
                         chunk = sock.recv(frame_size - len(data))
                         if not chunk:
                             print("[RTSP] Connexion fermée par serveur")
+                            self.error = 'Le serveur caméra du robot a fermé la connexion.'
                             return
                         data += chunk
 
@@ -146,6 +164,8 @@ class RTSPStreamReader:
 
         except Exception as e:
             print(f"[RTSP] TCP connection error: {e}")
+            self.error = ('Connexion refusée : aucun serveur caméra ne tourne sur le robot. '
+                          'Onglet « Robot (SSH) » → « Lancer la caméra ».') if isinstance(e, ConnectionRefusedError) else f'Connexion impossible : {e}'
         finally:
             try:
                 sock.close()

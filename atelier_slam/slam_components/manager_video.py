@@ -31,8 +31,7 @@ class ManagerVideoMixin:
             return
 
         print(f"[MANAGER] Tentative de connexion au flux vidéo: {url}")
-        print("[MANAGER] Assurez-vous que serveur_camera.py est en cours sur le robot:")
-        print("  - Sur le robot: python3 serveur_camera.py &")
+        print("[MANAGER] Le serveur caméra se lance depuis l'onglet « Robot (SSH) » → « Lancer la caméra ».")
         print("[MANAGER] Les logs s'afficheront dans le terminal...")
 
         self.video_reader = RTSPStreamReader(url, width=640, height=480)
@@ -85,7 +84,9 @@ class ManagerVideoMixin:
                 if not HAS_PILLOW:
                     self.info_label.config(text="PIL/Pillow non installé", fg="#e74c3c")
                 else:
-                    self.info_label.config(text=f"Vidéo: {status} (en attente de frames...)", fg="#f39c12")
+                    error = getattr(self.video_reader, 'error', '')
+                    self.info_label.config(text=f"Vidéo : {error}" if error else f"Vidéo: {status} (en attente de frames...)",
+                                           fg="#e74c3c" if error else "#f39c12")
 
             if self.video_enabled:
                 self.root.after(50, self.update_video_frame)  # ~20 FPS

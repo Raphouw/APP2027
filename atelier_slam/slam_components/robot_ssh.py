@@ -18,9 +18,12 @@ CONFIG_PATH = Path(os.environ.get('ATELIER_CONFIG_DIR', Path.home()/'.config'/'a
 KNOWN_HOSTS = Path.home()/'.ssh'/'known_hosts'
 # model / lds_model vides = on garde ce que le robot définit lui-même (~/.bashrc), comme en ligne de commande.
 DEFAULTS = dict(host='', user='ubuntu', port=22, key_file='', ros_domain_id=30,
-                model='', lds_model='', ros_distro='humble', bringup_command='')
+                model='', lds_model='', ros_distro='humble', bringup_command='', camera_port=9999)
 MODELS = ('', 'burger', 'waffle', 'waffle_pi')
 LDS_MODELS = ('', 'LDS-01', 'LDS-02', 'LDS-03')
+
+CAMERA_SCRIPT = Path(__file__).resolve().parents[1]/'serveur_camera.py'
+CAMERA_REMOTE_DIR = 'atelier_slam'     # relatif au dossier personnel du robot
 
 DISCONNECTED, CONNECTING, CONNECTED, BRINGUP, ERROR = 'deconnecte', 'connexion', 'connecte', 'bringup', 'erreur'
 
@@ -89,7 +92,21 @@ def bringup_command(settings):
             '&& ros2 launch turtlebot3_bringup robot.launch.py')
 
 
-HINTS = (("KeyError: 'LDS_MODEL'", 'Le robot ne connaît pas son modèle de LiDAR (LDS_MODEL). '
+def camera_command(settings):
+    """Lance le serveur de flux caméra sur le robot (ROS chargé : il peut lire /camera/image_raw)."""
+    distro = re.sub(r'[^a-z]', '', str(settings.get('ros_distro', 'humble'))) or 'humble'
+    port = int(settings.get('camera_port', 9999))
+    return (f'source /opt/ros/{distro}/setup.bash; export ROS_DOMAIN_ID={int(settings["ros_domain_id"])}; '
+            f'exec python3 -u ~/{CAMERA_REMOTE_DIR}/serveur_camera.py --port {port}')
+
+
+def camera_url(settings):
+    return f'tcp://{str(settings["host"]).strip()}:{int(settings.get("camera_port", 9999))}'
+
+
+HINTS = (("[CAMERA] ERREUR", 'La caméra n’a pas démarré sur le robot : voir le message [CAMERA] ci-dessus.'),
+         ("Address already in use", 'Le port de la caméra est déjà pris sur le robot : arrêtez l’ancien serveur caméra.'),
+         ("KeyError: 'LDS_MODEL'", 'Le robot ne connaît pas son modèle de LiDAR (LDS_MODEL). '
           'Choisissez-le dans « Modèle LiDAR » (LDS-01, LDS-02 ou LDS-03) ou ajoutez-le au ~/.bashrc du robot.'),
          ("KeyError: 'TURTLEBOT3_MODEL'", 'Le robot ne connaît pas son modèle (TURTLEBOT3_MODEL). '
           'Choisissez-le dans « Modèle » ou ajoutez-le au ~/.bashrc du robot.'),
@@ -133,6 +150,8 @@ class RobotLink:
         self._channel = None
         self._reader = None
         self.last_hint = ''
+        self._camera = None
+        self.camera_message = ''
 
     # -- connexion -------------------------------------------------------------------------
     def connect(self, settings, password='', confirm_host_key=lambda host, fingerprint: False):
@@ -178,6 +197,7 @@ class RobotLink:
         return client
 
     def disconnect(self, quiet=False):
+        self.stop_camera(quiet=True)
         self.stop_bringup(quiet=True)
         if self._client is not None:
             try:
@@ -253,6 +273,87 @@ class RobotLink:
         self._channel = None
         if self.state == BRINGUP:
             self._set(CONNECTED, 'Bringup arrêté.' if not quiet else self.message)
+
+    # -- caméra ----------------------------------------------------------------------------
+    @property
+    def camera_running(self):
+        return self._camera is not None
+
+    def start_camera(self, settings):
+        """Copie `serveur_camera.py` sur le robot puis le lance (port 9999 par défaut)."""
+        if self._client is None or self.state not in (CONNECTED, BRINGUP):
+            self.camera_message = 'Connectez-vous au robot avant de lancer la caméra.'
+            return False
+        if self._camera is not None:
+            return True
+        try:
+            sftp = self._client.open_sftp()
+            try:
+                try:
+                    sftp.mkdir(CAMERA_REMOTE_DIR)
+                except OSError:
+                    pass                     # existe déjà
+                sftp.put(str(CAMERA_SCRIPT), f'{CAMERA_REMOTE_DIR}/serveur_camera.py')
+            finally:
+                sftp.close()
+            # Libère le port si un ancien serveur caméra tourne encore (le crochet évite de se tuer soi-même).
+            kill = self._client.get_transport().open_session()
+            kill.exec_command("pkill -f '[s]erveur_camera.py'; sleep 0.5")
+            kill.recv_exit_status()
+            kill.close()
+            channel = self._client.get_transport().open_session()
+            channel.get_pty()
+            channel.exec_command('bash -ic '+shlex.quote(camera_command(settings)))
+        except Exception as exc:
+            self.camera_message = 'Caméra impossible : '+explain_error(exc)
+            self.output.put('[caméra] '+self.camera_message)
+            return False
+        self._camera = channel
+        self.output.put('$ '+camera_command(settings))
+        threading.Thread(target=self._read_camera, args=(channel,), daemon=True).start()
+        self.camera_message = 'Serveur caméra lancé sur '+camera_url(settings)+'.'
+        return True
+
+    def _read_camera(self, channel):
+        buffer = ''
+        try:
+            while True:
+                chunk = channel.recv(4096)
+                if not chunk:
+                    break
+                buffer += chunk.decode('utf-8', 'replace').replace('\r', '')
+                *lines, buffer = buffer.split('\n')
+                for line in lines:
+                    self.output.put(line)
+                    hint = hint_for(line)
+                    if hint:
+                        self.output.put('>>> '+hint)
+                        self.camera_message = hint
+        except Exception as exc:
+            self.output.put('[caméra interrompue] '+str(exc))
+        if self._camera is channel:
+            self._camera = None
+            if not self.camera_message.startswith(('La caméra', 'Le port')):
+                self.camera_message = 'Le serveur caméra s’est arrêté.'
+
+    def stop_camera(self, quiet=False):
+        channel = self._camera
+        if channel is None:
+            return
+        self._camera = None
+        try:
+            channel.send('\x03')
+            deadline = time.monotonic()+3.0
+            while not channel.exit_status_ready() and time.monotonic() < deadline:
+                time.sleep(0.1)
+        except Exception:
+            pass
+        try:
+            channel.close()
+        except Exception:
+            pass
+        if not quiet:
+            self.camera_message = 'Serveur caméra arrêté.'
 
     def _set(self, state, message):
         self.state, self.message = state, message
