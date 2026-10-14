@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+mapping/build/
+mapping/install/
+mapping/log/
+mapping/logs/run_*.csv
+mapping/logs/launches/
+mapping/logs/manager_runs/
+mapping/logs/cache/
+mapping/logs/sessions/
+backups/
+Code APP.zip
+.claude/settings.local.json
