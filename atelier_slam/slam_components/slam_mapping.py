@@ -10,10 +10,12 @@ from .slam_engine import SlamEngine, PoseBuffer
 from .map_format import encode_probability
 
 
-# Après une fermeture de boucle, la grille doit être reconstruite depuis toutes les observations.
-# Pour tenir le temps réel, on attend au moins ce nombre de scans entre deux reconstructions
-# (la première est immédiate) ; `flush_raster` termine le travail avant toute sauvegarde.
+# Après une fermeture de boucle, la grille doit être reconstruite depuis toutes les observations,
+# ce qui coûte de plus en plus cher. Pour tenir le temps réel, on attend au moins ce nombre de scans
+# ET dix fois la durée de la reconstruction précédente (elle occupe au plus ~10 % du temps) ;
+# la première est immédiate, et `flush_raster` termine le travail avant toute sauvegarde.
 REBUILD_EVERY_SCANS = 20
+REBUILD_TIME_FACTOR = 10.0
 
 
 class SlamMappingMixin:
@@ -21,6 +23,8 @@ class SlamMappingMixin:
         self.slam = SlamEngine()
         self._raster_revision = 0
         self._scans_since_rebuild = REBUILD_EVERY_SCANS
+        self._last_rebuild_end = 0.0
+        self._last_rebuild_duration = 0.0
         self.pose_buffer = PoseBuffer()
         self.unsynchronized_scans = 0
         self._preview_time = 0
@@ -37,7 +41,8 @@ class SlamMappingMixin:
         self._scans_since_rebuild += 1
         rebuilt = False
         if (self.slam.revision != self._raster_revision
-                and self._scans_since_rebuild >= REBUILD_EVERY_SCANS):
+                and self._scans_since_rebuild >= REBUILD_EVERY_SCANS
+                and time.monotonic()-self._last_rebuild_end >= REBUILD_TIME_FACTOR*self._last_rebuild_duration):
             self._rebuild_raster()
             rebuilt = True
         else:
@@ -54,6 +59,7 @@ class SlamMappingMixin:
         self.write_preview()
 
     def _rebuild_raster(self):
+        started = time.monotonic()
         # Rebuild ALL retained observations, including free-space rays.
         for name, fill in [('map', .5), ('map_logodd', 0.), ('cell_update_time', 0),
                            ('cell_change_count', 0), ('cell_prev_state', .5)]:
@@ -63,6 +69,8 @@ class SlamMappingMixin:
             self._raster_scan(past_pose, past_points, hits)
         self._raster_revision = self.slam.revision
         self._scans_since_rebuild = 0
+        self._last_rebuild_end = time.monotonic()
+        self._last_rebuild_duration = self._last_rebuild_end-started
 
     def flush_raster(self):
         """Termine une reconstruction différée (à appeler avant d'enregistrer la carte)."""

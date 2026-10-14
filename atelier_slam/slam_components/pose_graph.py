@@ -43,7 +43,7 @@ class PoseGraph:
             for node in (i, j):
                 if node:
                     sparsity[3*row:3*row+3, 3*(node-1):3*node] = 1
-        solution = least_squares(residual, before, loss='soft_l1', max_nfev=80,
+        solution = least_squares(residual, before, loss='soft_l1', max_nfev=30, ftol=1e-6, xtol=1e-6,
                                  jac_sparsity=sparsity.tocsr())
         robust_cost = lambda x: np.sum(2*(np.sqrt(1+residual(x)**2)-1))
         if not solution.success or not np.all(np.isfinite(solution.x)) or robust_cost(solution.x) > robust_cost(before)+1e-6:
