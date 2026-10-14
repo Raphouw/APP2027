@@ -48,4 +48,4 @@ Réserves : une seule exécution par ligne, sur un PC qui fait tourner cinq proc
 2. Chaque fermeture de boucle déclenchait une reconstruction complète de la carte (tous les scans depuis le début), soit plusieurs secondes de blocage à chaque fois. La reconstruction est maintenant différée : au moins 20 scans et dix fois sa propre durée entre deux reconstructions, et une dernière avant l'enregistrement de la carte.
 3. L'optimisation du graphe de poses calculait ses résidus arête par arête en Python ; elle est vectorisée (résultat identique à 1e-15) et s'arrête à une tolérance un peu plus large (30 évaluations au plus au lieu de 80).
 
-Effet sur un rejeu de 1 500 scans : environ 150 s avant, 35 s après.
+Effet sur un rejeu de 1 500 scans : plus de 2 minutes avant (estimé d'après la progression mesurée), 35 s après.
