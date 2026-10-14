@@ -145,6 +145,8 @@ def camera_command(settings):
 
 CAMERA_DIAGNOSTIC = r"""
 echo '== modèle'; tr -d '\0' < /proc/device-tree/model 2>/dev/null; echo
+echo '== système'; (lsb_release -ds; uname -r) 2>&1
+echo '== config.txt (caméra)'; grep -hiE 'camera|imx219|dtoverlay|start_x|gpu_mem' /boot/firmware/config.txt /boot/config.txt 2>/dev/null || echo 'config.txt introuvable'
 echo '== vcgencmd get_camera'; vcgencmd get_camera 2>&1
 echo '== libcamera / rpicam'; (command -v rpicam-hello libcamera-hello || echo 'ni rpicam-hello ni libcamera-hello installé')
 (rpicam-hello --list-cameras || libcamera-hello --list-cameras) 2>&1 | head -15
