@@ -138,6 +138,10 @@ class ManagerUIMixin:
         self.btn_video = ttk.Button(video_controls, text='Connecter', command=self.start_video)
         self.btn_video.pack(side='left')
         ttk.Button(video_controls, text='Déconnecter', command=self.disconnect_video).pack(side='left', padx=8)
+        from .manager_video import load_ui_settings, save_ui_setting
+        self.camera_flip = tk.BooleanVar(value=bool(load_ui_settings().get('camera_flip_180', True)))
+        ttk.Checkbutton(video_controls, text='Retourner l’image de 180°', variable=self.camera_flip,
+                        command=lambda: save_ui_setting('camera_flip_180', bool(self.camera_flip.get()))).pack(side='left', padx=8)
         self.video_label = tk.Label(video_tab, bg='#18293d', fg='white', text='La caméra est facultative pour le SLAM LiDAR.')
         self.video_label.pack(fill='both', expand=True, pady=12)
         self.info_label = tk.Label(self.root, text='Prêt. Démarrez une session ou ouvrez une carte.', bg='#e5edf4', fg='#18293d',

@@ -67,6 +67,21 @@ class ServerTests(unittest.TestCase):
             client.recv(1)
 
 
+class FlipTests(unittest.TestCase):
+    def test_rotation_180_and_saved_setting(self):
+        import tempfile
+        from slam_components.manager_video import rotate_180, load_ui_settings, save_ui_setting
+        frame = np.arange(2*3*3, dtype=np.uint8).reshape(2, 3, 3)
+        flipped = rotate_180(frame)
+        self.assertTrue((flipped[0, 0] == frame[1, 2]).all() and (flipped[1, 2] == frame[0, 0]).all())
+        self.assertTrue((rotate_180(flipped) == frame).all())
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'ui.json'
+            self.assertEqual(load_ui_settings(path), {})
+            save_ui_setting('camera_flip_180', False, path)
+            self.assertFalse(load_ui_settings(path)['camera_flip_180'])
+
+
 class _Channel:
     def __init__(self):
         self.command, self.sent, self.closed = None, [], False

@@ -3,11 +3,40 @@
 Les attributs sont initialisés par le point d’entrée ; ce mixin ne lance aucun processus.
 """
 
+import json
+import numpy as np
+import os
 import tkinter as tk
+from pathlib import Path
 from tkinter import messagebox
 from flux_video import RTSPStreamReader, MockStreamReader
 from .video_dependencies import HAS_PILLOW, Image, ImageTk
 from .system_tools import check_ffmpeg
+
+UI_SETTINGS = Path(os.environ.get('ATELIER_CONFIG_DIR', Path.home()/'.config'/'atelier_slam'))/'ui.json'
+
+
+def load_ui_settings(path=UI_SETTINGS):
+    try:
+        return json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def save_ui_setting(key, value, path=UI_SETTINGS):
+    data = load_ui_settings(path)
+    data[key] = value
+    try:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        Path(path).write_text(json.dumps(data, indent=2))
+    except OSError:
+        pass
+
+
+def rotate_180(frame):
+    """Image retournée de 180° (caméra montée à l'envers) : vue sans copie, ordre BGR/RGB inchangé."""
+    return frame[::-1, ::-1]
+
 
 class ManagerVideoMixin:
 
@@ -69,11 +98,13 @@ class ManagerVideoMixin:
                     # Convertir BGR vers RGB et redimensionner
                     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     frame_rgb = cv2.resize(frame_rgb, (640, 480))
+                    if self.camera_flip.get():
+                        frame_rgb = rotate_180(frame_rgb)
                 except ImportError:
-                    frame_rgb = frame  # Fallback: use frame as-is
+                    frame_rgb = rotate_180(frame) if self.camera_flip.get() else frame  # Fallback: use frame as-is
 
                 # Convertir en PhotoImage
-                img = Image.fromarray(frame_rgb)
+                img = Image.fromarray(np.ascontiguousarray(frame_rgb))
                 photo = ImageTk.PhotoImage(img)
 
                 self.video_label.config(image=photo)
