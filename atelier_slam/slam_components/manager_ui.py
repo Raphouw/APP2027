@@ -122,6 +122,8 @@ class ManagerUIMixin:
         self.journal.configure(state='disabled')
         ttk.Button(journal_tab, text='Ouvrir les logs de ce run', command=self.open_debug_logs).pack(anchor='w', pady=8)
         ttk.Button(journal_tab, text='Ouvrir RViz (outils avancés)', command=self.open_rviz).pack(anchor='w', pady=8)
+        if hasattr(self, 'build_robot_tab'):
+            self.build_robot_tab()
         self.build_ros_tab()
         video_tab = ttk.Frame(self.book, padding=12)
         self.book.add(video_tab, text='  Caméra optionnelle  ')

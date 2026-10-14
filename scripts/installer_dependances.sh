@@ -10,7 +10,7 @@ case "${1:-}" in
 esac
 ros_distro="${TB3_ROS_DISTRO:-humble}"
 packages=(python3-tk python3-numpy python3-scipy python3-matplotlib python3-pil
-  python3-pil.imagetk python3-yaml python3-opencv ffmpeg
+  python3-pil.imagetk python3-yaml python3-opencv python3-paramiko ffmpeg
   "ros-$ros_distro-rclpy" "ros-$ros_distro-sensor-msgs" "ros-$ros_distro-nav-msgs"
   "ros-$ros_distro-geometry-msgs" "ros-$ros_distro-std-msgs" "ros-$ros_distro-tf2-ros"
   "ros-$ros_distro-cv-bridge" "ros-$ros_distro-rviz2")

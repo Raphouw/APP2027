@@ -43,7 +43,7 @@ Cochez « Mode simulation (sans robot) » dans le manager : un robot virtuel rem
 |---|---|
 | `atelier_slam/` | Code : points d'entrée (`atelier.py`, `noeud_odometrie.py`, `cartographe.py`, `navigation_carte.py`), modules dans `slam_components/`, configuration RViz dans `config/` |
 | `data/demo_map/` | Carte de démonstration (PGM + YAML) |
-| `docs/` | Guides (dont [SIMULATION.md](docs/SIMULATION.md)) ; `docs/archive/` garde l'ancien résumé d'avant refonte |
+| `docs/` | Guides (dont [SIMULATION.md](docs/SIMULATION.md), [ROBOT_SSH.md](docs/ROBOT_SSH.md)) ; `docs/archive/` garde l'ancien résumé d'avant refonte |
 | `tests/` | Tests unitaires (ROS doit être chargé) ; `tests/manual/` : essai manuel de l'interface |
 | `scripts/` | Installation des dépendances et de l'icône |
 | `assets/` | Icône et modèle de lanceur |

@@ -14,12 +14,13 @@ from slam_components.manager_ui import ManagerUIMixin
 from slam_components.manager_processes import ManagerProcessesMixin
 from slam_components.manager_video import ManagerVideoMixin
 from slam_components.manager_ros import ManagerRosMixin
+from slam_components.manager_robot import ManagerRobotMixin
 from slam_components.system_tools import check_ffmpeg
 
 __all__ = ['TB3Manager', 'check_ffmpeg']
 
 
-class TB3Manager(ManagerUIMixin, ManagerProcessesMixin, ManagerVideoMixin, ManagerRosMixin):
+class TB3Manager(ManagerUIMixin, ManagerProcessesMixin, ManagerVideoMixin, ManagerRosMixin, ManagerRobotMixin):
     def __init__(self, root):
         self.root = root
         root.title('Atelier SLAM · TurtleBot3')
