@@ -59,12 +59,47 @@ class ServerTests(unittest.TestCase):
         client = socket.create_connection(('127.0.0.1', port), timeout=3)
         hub.push(np.full((12, 16, 3), 5, np.uint8))     # 16x12 -> 8x6
         data = b''
-        while len(data) < 8*6*3:
-            data += client.recv(8*6*3-len(data))
-        self.assertEqual(data, bytes([5])*(8*6*3))
+        while len(data) < 8:
+            data += client.recv(8-len(data))
+        self.assertEqual(data[:4], b'JPG1')
+        size = int.from_bytes(data[4:8], 'big')
+        while len(data) < 8+size:
+            data += client.recv(8+size-len(data))
         client.settimeout(0.5)
         with self.assertRaises(socket.timeout):          # pas de renvoi de la même image
             client.recv(1)
+
+
+class JpegStreamTests(unittest.TestCase):
+    def test_jpeg_frames_reach_the_client_and_stay_small(self):
+        from flux_video import RTSPStreamReader
+        hub = cam.FrameHub(64, 48, fps=100)
+        sock = socket.socket()
+        sock.bind(('127.0.0.1', 0))
+        port = sock.getsockname()[1]
+        sock.close()
+        threading.Thread(target=cam.serve, args=(hub, port), daemon=True).start()
+        time.sleep(0.3)
+        reader = RTSPStreamReader(f'tcp://127.0.0.1:{port}', width=64, height=48)
+        reader.start()
+        try:
+            deadline = time.time()+5
+            while reader.get_frame() is None and time.time() < deadline:
+                hub.push(np.full((48, 64, 3), (0, 0, 255), np.uint8))
+                time.sleep(0.05)
+            frame = reader.get_frame()
+            self.assertIsNotNone(frame)
+            self.assertEqual(frame.shape, (48, 64, 3))
+            self.assertGreater(int(frame[10, 10, 2]), 200)
+            self.assertLess(len(hub.payload), 64*48*3)        # bien plus petit que le BGR brut
+        finally:
+            reader.stop()
+
+    def test_frame_rate_is_limited_before_any_conversion(self):
+        hub = cam.FrameHub(8, 6, fps=2)
+        hub.push(np.zeros((6, 8, 3), np.uint8))
+        hub.push(np.zeros((6, 8, 3), np.uint8))
+        self.assertEqual(hub.received, 1)
 
 
 class FlipTests(unittest.TestCase):

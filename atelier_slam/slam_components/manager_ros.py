@@ -30,6 +30,11 @@ def connection_summary(graph):
     publishers = {t['name']: t['publishers'] for t in graph['topics']}
     missing = [label for topic, label in SENSOR_TOPICS.items() if not publishers.get(topic)]
     if not missing:
+        stale = [f'{label} ({t.get("age") or 0:.0f} s)' for t in graph['topics'] if t['name'] in SENSOR_TOPICS
+                 and (t.get('age') is None or t['age'] > 2) for label in [SENSOR_TOPICS[t['name']]]]
+        if stale:
+            return 'warn', ('Liaison instable ou saturée : pas de message récent pour '+', '.join(stale)+
+                            '. Réseau Wi-Fi chargé (caméra ?) ou topic en attente.')
         return 'ok', 'Robot connecté : IMU, roues et LiDAR sont publiés.'
     if len(missing) == len(SENSOR_TOPICS):
         return 'warn', ('Aucun robot détecté : personne ne publie /imu, /joint_states ni /scan. '
@@ -47,10 +52,11 @@ class ManagerRosMixin:
         self.ros_summary.pack(anchor='w', pady=(0, 4))
         self.ros_env = ttk.Label(tab, text='', style='Subtitle.TLabel')
         self.ros_env.pack(anchor='w', pady=(0, 8))
-        columns = ('topic', 'type', 'pub', 'sub')
+        columns = ('topic', 'type', 'pub', 'sub', 'hz', 'age')
         self.ros_tree = ttk.Treeview(tab, columns=columns, show='headings', height=14)
         for column, title, width in (('topic', 'Topic', 260), ('type', 'Type', 280),
-                                     ('pub', 'Publieurs', 80), ('sub', 'Abonnés', 80)):
+                                     ('pub', 'Publieurs', 80), ('sub', 'Abonnés', 80),
+                                     ('hz', 'Fréquence (Hz)', 100), ('age', 'Dernier message (s)', 130)):
             self.ros_tree.heading(column, text=title)
             self.ros_tree.column(column, width=width, anchor='w' if column in ('topic', 'type') else 'center')
         self.ros_tree.tag_configure('sensor_ok', foreground='#14704b')
@@ -83,6 +89,7 @@ class ManagerRosMixin:
                             f'ROS_LOCALHOST_ONLY : {graph["localhost_only"]}   ·   {len(graph["topics"])} topics')
         rows = [] if graph is None else [
             (t['name'], ', '.join(t['types']), t['publishers'], t['subscribers'],
+             t['hz'] if 'hz' in t else '', '' if t.get('age') is None else t['age'],
              ('sensor_ok' if t['publishers'] else 'sensor_missing') if t['name'] in SENSOR_TOPICS else '')
             for t in graph['topics']]
         if rows != getattr(self, '_ros_rows', None):

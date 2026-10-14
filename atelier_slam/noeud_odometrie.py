@@ -337,12 +337,12 @@ class TurtleBot3NavNode(OdometryMixin, LidarPerceptionMixin, RecoveryMixin, Reac
         if not self.odometry_only:
             self.create_subscription(PoseStamped, '/goal_pose', self._cb_goal, 10)
 
-        # PHASE 5 – Optionnel : Subscribe à la caméra pour loop closure
-        try:
-            self.create_subscription(Image, '/camera/image_raw', self._cb_camera, 10)
-            self.get_logger().info("[PHASE5] Camera subscription active (optionnel)")
-        except Exception as e:
-            self.get_logger().info(f"[PHASE5] Camera not available: {e}")
+        # PHASE 5 – Optionnel : la caméra n'est écoutée que sur demande. Sinon, ses images
+        # (~900 Ko chacune) traversent le Wi-Fi et font perdre les messages IMU/LiDAR/roues.
+        self.declare_parameter('use_camera', False)
+        if self.get_parameter('use_camera').value:
+            self.create_subscription(Image, '/camera/image_raw', self._cb_camera, qos_profile_sensor_data)
+            self.get_logger().info("[PHASE5] Camera subscription active (use_camera:=true)")
 
         self.create_timer(self.dt, self._control_loop)
         if not self.imu_ok:

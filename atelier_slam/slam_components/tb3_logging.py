@@ -51,7 +51,16 @@ class SessionLoggingMixin:
         if now-getattr(self, '_health_time', 0) < .2:
             return
         self._health_time = now
-        fresh = lambda name: getattr(self, name, None) is not None and now-getattr(self, name) < self.sensor_timeout
+        # Affichage avec hystérésis : un capteur déjà disponible le reste 3 s sans message,
+        # pour ne pas clignoter sur un Wi-Fi chargé (le contrôle garde son délai strict).
+        shown = getattr(self, '_health_shown', {})
+        def fresh(name):
+            last = getattr(self, name, None)
+            age = None if last is None else now-last
+            value = age is not None and (age < self.sensor_timeout or (shown.get(name) and age < 3.0))
+            shown[name] = value
+            return value
+        self._health_shown = shown
         data = dict(updated_at=time.time(), imu=fresh('last_imu_received'),
                     wheels=fresh('last_joint_received'), lidar=fresh('last_scan_received'),
                     lidar_front_known=getattr(self, 'lidar_front_known', False),

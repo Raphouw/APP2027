@@ -120,30 +120,39 @@ class RTSPStreamReader:
             self.error = ''
             print(f"[RTSP] ✓ Connecté à {host}:{port}")
 
-            frame_size = self.width * self.height * 3  # BGR24
+            frame_size = self.width * self.height * 3  # BGR24 (anciens serveurs, sans compression)
             frames_received = 0
+            pending = b''
+
+            def read_exact(count):
+                nonlocal pending
+                while len(pending) < count:
+                    chunk = sock.recv(max(65536, count-len(pending)))
+                    if not chunk:
+                        raise ConnectionError('Le serveur caméra du robot a fermé la connexion.')
+                    pending += chunk
+                data, pending = pending[:count], pending[count:]
+                return data
 
             while self.is_running:
                 try:
-                    # Lire une frame complète
-                    data = b''
-                    while len(data) < frame_size:
-                        chunk = sock.recv(frame_size - len(data))
-                        if not chunk:
-                            print("[RTSP] Connexion fermée par serveur")
-                            self.error = 'Le serveur caméra du robot a fermé la connexion.'
-                            return
-                        data += chunk
+                    head = read_exact(4)
+                    if head == b'JPG1':
+                        # Serveur récent : image JPEG précédée de sa taille (≈ 40 Ko au lieu de 900 Ko).
+                        size = int.from_bytes(read_exact(4), 'big')
+                        packed = np.frombuffer(read_exact(size), dtype=np.uint8)
+                        import cv2
+                        frame = cv2.imdecode(packed, cv2.IMREAD_COLOR)
+                        if frame is None:
+                            continue
+                        data = b'x'
+                    else:
+                        data = head+read_exact(frame_size-4)
+                        frame = np.frombuffer(data, dtype=np.uint8).reshape((self.height, self.width, 3))
 
                     frames_received += 1
-
-                    # Log du premier frame
                     if frames_received == 1:
-                        print(f"[RTSP] ✓ Premier frame reçu! Taille: {len(data)} bytes")
-
-                    # Convertir en np.ndarray
-                    frame = np.frombuffer(data, dtype=np.uint8)
-                    frame = frame.reshape((self.height, self.width, 3))
+                        print(f"[RTSP] ✓ Premier frame reçu! {frame.shape[1]}x{frame.shape[0]}")
 
                     # Mettre à jour le frame
                     with self.frame_lock:
@@ -158,6 +167,9 @@ class RTSPStreamReader:
                         self.frame_count = 0
                         self.last_fps_time = now
 
+                except ConnectionError as e:
+                    self.error = str(e)
+                    return
                 except Exception as e:
                     print(f"[RTSP] Read error: {e}")
                     break

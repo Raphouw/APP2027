@@ -11,6 +11,7 @@ Chaque image est redimensionnée à largeur×hauteur (640×480 par défaut, ce q
 attend) puis envoyée telle quelle, sans en-tête : largeur×hauteur×3 octets BGR24.
 """
 import argparse
+import os
 import socket
 import sys
 import threading
@@ -72,18 +73,32 @@ def to_bgr(data, height, width, encoding, step=None):
 class FrameHub:
     """Dernière image reçue, partagée entre la source et les clients TCP."""
 
-    def __init__(self, width, height):
+    def __init__(self, width, height, fps=10.0, quality=70):
         self.width, self.height = width, height
+        self.min_interval, self.quality, self.last_push = 1.0/fps, quality, 0.0
         self.condition = threading.Condition()
         self.payload, self.sequence = None, 0
         self.received = 0
         self.started = time.time()
 
+    def accepts(self):
+        """Faux si l'image arrive trop tôt pour la cadence demandée (évite de convertir pour rien)."""
+        return time.time()-self.last_push >= self.min_interval
+
     def push(self, frame):
+        if not self.accepts():
+            return
+        self.last_push = time.time()
         if frame.shape[1] != self.width or frame.shape[0] != self.height:
             frame = (cv2.resize(frame, (self.width, self.height)) if cv2 is not None
                      else resize_nearest(frame, self.width, self.height))
-        payload = np.ascontiguousarray(frame, dtype=np.uint8).tobytes()
+        frame = np.ascontiguousarray(frame, dtype=np.uint8)
+        if cv2 is not None:
+            # JPEG précédé de « JPG1 » et de sa taille : ≈ 40 Ko par image au lieu de 900 Ko en BGR brut.
+            ok, packed = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, self.quality])
+            payload = b'JPG1'+len(packed).to_bytes(4, 'big')+packed.tobytes() if ok else frame.tobytes()
+        else:
+            payload = frame.tobytes()
         with self.condition:
             self.payload, self.sequence = payload, self.sequence+1
             self.condition.notify_all()
@@ -240,6 +255,8 @@ def run_ros(hub, topic, wait_for_images=None):
     warned = set()
 
     def on_image(msg):
+        if not hub.accepts():
+            return
         try:
             hub.push(to_bgr(bytes(msg.data), msg.height, msg.width, msg.encoding, msg.step))
         except Exception as exc:
@@ -281,8 +298,9 @@ class CameraRosNode:
         command = ['ros2', 'run', 'camera_ros', 'camera_node', '--ros-args',
                    '-p', f'width:={width}', '-p', f'height:={height}',
                    '-p', 'format:=RGB888', '-p', 'camera:=0']
-        log('caméra CSI détectée (unicam) : lancement de camera_ros')
-        self.process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        log('caméra CSI détectée (unicam) : lancement de camera_ros (images gardées sur le robot, ROS_LOCALHOST_ONLY=1)')
+        env = dict(os.environ, ROS_LOCALHOST_ONLY='1')
+        self.process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
         threading.Thread(target=self._relay, daemon=True).start()
 
     def _relay(self):
@@ -301,13 +319,14 @@ def main(argv=None):
     parser.add_argument('--port', type=int, default=9999)
     parser.add_argument('--width', type=int, default=640)
     parser.add_argument('--height', type=int, default=480)
-    parser.add_argument('--fps', type=float, default=15.0, help='cadence maximale (caméra V4L2)')
+    parser.add_argument('--fps', type=float, default=10.0, help='cadence maximale du flux envoyé')
+    parser.add_argument('--quality', type=int, default=70, help='qualité JPEG (1-100)')
     parser.add_argument('--source', choices=('auto', 'ros', 'v4l2'), default='auto',
                         help='auto : le topic ROS s’il publie, sinon la caméra V4L2')
     parser.add_argument('--topic', default='/camera/image_raw')
     parser.add_argument('--device', default='0', help='caméra V4L2 : numéro (0) ou chemin (/dev/video0)')
     args = parser.parse_args(argv)
-    hub = FrameHub(args.width, args.height)
+    hub = FrameHub(args.width, args.height, args.fps, args.quality)
     threading.Thread(target=serve, args=(hub, args.port), daemon=True).start()
     time.sleep(0.3)
     try:
@@ -315,6 +334,9 @@ def main(argv=None):
             try:
                 finished = run_ros(hub, args.topic, wait_for_images=5.0 if args.source == 'auto' else None)
                 if not finished and has_csi_camera():
+                    # Les images brutes ne doivent jamais traverser le Wi-Fi (elles saturaient le DDS et
+                    # coupaient IMU/LiDAR/roues) : camera_ros et ce serveur communiquent en local seulement.
+                    os.environ['ROS_LOCALHOST_ONLY'] = '1'
                     node = CameraRosNode(args.width, args.height)
                     try:
                         if node.process is not None:
