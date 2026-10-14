@@ -64,10 +64,15 @@ class SettingsTests(unittest.TestCase):
         self.assertIsNone(r.validate(GOOD))
 
     def test_default_bringup_command_uses_model_and_domain(self):
-        command = r.bringup_command(dict(GOOD, model='waffle', ros_domain_id=7))
+        command = r.bringup_command(dict(GOOD, model='waffle', lds_model='LDS-02', ros_domain_id=7))
         self.assertIn('TURTLEBOT3_MODEL=waffle', command)
+        self.assertIn('LDS_MODEL=LDS-02', command)
         self.assertIn('ROS_DOMAIN_ID=7', command)
         self.assertIn('turtlebot3_bringup robot.launch.py', command)
+        # Sans choix explicite, on laisse le robot utiliser son propre environnement.
+        plain = r.bringup_command(GOOD)
+        self.assertNotIn('TURTLEBOT3_MODEL', plain)
+        self.assertNotIn('LDS_MODEL', plain)
         self.assertEqual(r.bringup_command(dict(GOOD, bringup_command='ros2 run x y')), 'ros2 run x y')
 
     def test_saved_settings_never_contain_a_password(self):
@@ -111,7 +116,7 @@ class LinkTests(unittest.TestCase):
         link.connect(GOOD)
         self.assertTrue(link.start_bringup(GOOD))
         self.assertEqual(link.state, r.BRINGUP)
-        self.assertTrue(channel.command.startswith('bash -lc '))
+        self.assertTrue(channel.command.startswith('bash -ic '))
         deadline = time.monotonic()+2
         lines = []
         while len(lines) < 3 and time.monotonic() < deadline:
@@ -122,6 +127,21 @@ class LinkTests(unittest.TestCase):
         link.stop_bringup(timeout=2)
         self.assertEqual(channel.sent, ['\x03'])
         self.assertEqual(link.state, r.CONNECTED)
+
+    def test_known_launch_errors_are_explained_in_plain_language(self):
+        channel = FakeChannel([b"KeyError: 'LDS_MODEL'\r\n"])
+        link = r.RobotLink(lambda: FakeClient(channel))
+        link.connect(GOOD)
+        link.start_bringup(GOOD)
+        channel.done = True
+        deadline = time.monotonic()+2
+        while link.state == r.BRINGUP and time.monotonic() < deadline:
+            time.sleep(0.01)
+        lines = []
+        while not link.output.empty():
+            lines.append(link.output.get())
+        self.assertTrue(any(line.startswith('>>> ') and 'Modèle LiDAR' in line for line in lines))
+        self.assertIn('LDS_MODEL', link.message)
 
     def test_bringup_requires_a_connection(self):
         link = r.RobotLink(lambda: FakeClient())

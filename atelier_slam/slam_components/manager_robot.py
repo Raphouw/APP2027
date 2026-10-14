@@ -17,7 +17,8 @@ class ManagerRobotMixin:
         self.robot_vars = dict(host=tk.StringVar(value=settings['host']), user=tk.StringVar(value=settings['user']),
                                port=tk.StringVar(value=str(settings['port'])), key_file=tk.StringVar(value=settings['key_file']),
                                ros_domain_id=tk.StringVar(value=str(settings['ros_domain_id'])),
-                               model=tk.StringVar(value=settings['model']), password=tk.StringVar())
+                               model=tk.StringVar(value=settings['model']), lds_model=tk.StringVar(value=settings['lds_model']),
+                               password=tk.StringVar())
         self._robot_extra = {k: settings[k] for k in ('ros_distro', 'bringup_command')}
         form = ttk.Frame(tab)
         form.pack(fill='x')
@@ -36,6 +37,13 @@ class ManagerRobotMixin:
         ttk.Label(form, text='Modèle').grid(row=5, column=0, sticky='w', pady=3)
         ttk.Combobox(form, textvariable=self.robot_vars['model'], values=ssh.MODELS, width=12,
                      state='readonly').grid(row=5, column=1, sticky='w')
+        ttk.Label(form, text='vide = celui défini sur le robot (~/.bashrc)', style='Subtitle.TLabel').grid(
+            row=5, column=2, sticky='w', padx=10)
+        ttk.Label(form, text='Modèle LiDAR').grid(row=6, column=0, sticky='w', pady=3)
+        ttk.Combobox(form, textvariable=self.robot_vars['lds_model'], values=ssh.LDS_MODELS, width=12,
+                     state='readonly').grid(row=6, column=1, sticky='w')
+        ttk.Label(form, text='LDS-01, LDS-02 ou LDS-03 ; vide = celui du robot', style='Subtitle.TLabel').grid(
+            row=6, column=2, sticky='w', padx=10)
         buttons = ttk.Frame(tab)
         buttons.pack(fill='x', pady=10)
         self.robot_connect = ttk.Button(buttons, text='Connecter', style='Primary.TButton', command=self.robot_connect_clicked)

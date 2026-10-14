@@ -16,9 +16,11 @@ from pathlib import Path
 
 CONFIG_PATH = Path(os.environ.get('ATELIER_CONFIG_DIR', Path.home()/'.config'/'atelier_slam'))/'robot.json'
 KNOWN_HOSTS = Path.home()/'.ssh'/'known_hosts'
+# model / lds_model vides = on garde ce que le robot définit lui-même (~/.bashrc), comme en ligne de commande.
 DEFAULTS = dict(host='', user='ubuntu', port=22, key_file='', ros_domain_id=30,
-                model='burger', ros_distro='humble', bringup_command='')
-MODELS = ('burger', 'waffle', 'waffle_pi')
+                model='', lds_model='', ros_distro='humble', bringup_command='')
+MODELS = ('', 'burger', 'waffle', 'waffle_pi')
+LDS_MODELS = ('', 'LDS-01', 'LDS-02', 'LDS-03')
 
 DISCONNECTED, CONNECTING, CONNECTED, BRINGUP, ERROR = 'deconnecte', 'connexion', 'connecte', 'bringup', 'erreur'
 
@@ -62,8 +64,10 @@ def validate(settings):
         return 'Port SSH invalide.'
     if not 0 <= domain <= 232:
         return 'ROS_DOMAIN_ID doit être entre 0 et 232.'
-    if settings.get('model', 'burger') not in MODELS:
+    if settings.get('model', '') not in MODELS:
         return 'Modèle de robot inconnu.'
+    if settings.get('lds_model', '') not in LDS_MODELS:
+        return 'Modèle de LiDAR inconnu.'
     key = str(settings.get('key_file', '')).strip()
     if key and not Path(key).expanduser().is_file():
         return 'Fichier de clé introuvable : '+key
@@ -76,8 +80,29 @@ def bringup_command(settings):
     if custom:
         return custom
     distro = re.sub(r'[^a-z]', '', str(settings.get('ros_distro', 'humble'))) or 'humble'
-    return (f'source /opt/ros/{distro}/setup.bash && export TURTLEBOT3_MODEL={shlex.quote(str(settings["model"]))} '
-            f'ROS_DOMAIN_ID={int(settings["ros_domain_id"])} && ros2 launch turtlebot3_bringup robot.launch.py')
+    exports = [f'ROS_DOMAIN_ID={int(settings["ros_domain_id"])}']
+    if settings.get('model'):
+        exports.append(f'TURTLEBOT3_MODEL={shlex.quote(str(settings["model"]))}')
+    if settings.get('lds_model'):
+        exports.append(f'LDS_MODEL={shlex.quote(str(settings["lds_model"]))}')
+    return (f'source /opt/ros/{distro}/setup.bash && export {" ".join(exports)} '
+            '&& ros2 launch turtlebot3_bringup robot.launch.py')
+
+
+HINTS = (("KeyError: 'LDS_MODEL'", 'Le robot ne connaît pas son modèle de LiDAR (LDS_MODEL). '
+          'Choisissez-le dans « Modèle LiDAR » (LDS-01, LDS-02 ou LDS-03) ou ajoutez-le au ~/.bashrc du robot.'),
+         ("KeyError: 'TURTLEBOT3_MODEL'", 'Le robot ne connaît pas son modèle (TURTLEBOT3_MODEL). '
+          'Choisissez-le dans « Modèle » ou ajoutez-le au ~/.bashrc du robot.'),
+         ('package \'turtlebot3_bringup\' not found', 'turtlebot3_bringup est introuvable sur le robot : '
+          'ROS n\'est pas chargé ou le paquet n\'est pas installé.'))
+
+
+def hint_for(line):
+    """Phrase d'explication si la ligne de sortie est une erreur connue, sinon None."""
+    for pattern, text in HINTS:
+        if pattern in line:
+            return text
+    return None
 
 
 def explain_error(exc):
@@ -107,6 +132,7 @@ class RobotLink:
         self._client = None
         self._channel = None
         self._reader = None
+        self.last_hint = ''
 
     # -- connexion -------------------------------------------------------------------------
     def connect(self, settings, password='', confirm_host_key=lambda host, fingerprint: False):
@@ -171,11 +197,13 @@ class RobotLink:
         try:
             channel = self._client.get_transport().open_session()
             channel.get_pty()
-            channel.exec_command('bash -lc '+shlex.quote(command))
+            # Shell interactif (-i) : lit ~/.bashrc du robot (LDS_MODEL, TURTLEBOT3_MODEL…) comme une session ouverte à la main.
+            channel.exec_command('bash -ic '+shlex.quote(command))
         except Exception as exc:
             self._set(ERROR, 'Bringup impossible : '+explain_error(exc))
             return False
         self._channel = channel
+        self.last_hint = ''
         self.output.put('$ '+command)
         self._reader = threading.Thread(target=self._read, args=(channel,), daemon=True)
         self._reader.start()
@@ -193,6 +221,10 @@ class RobotLink:
                 *lines, buffer = buffer.split('\n')
                 for line in lines:
                     self.output.put(line)
+                    hint = hint_for(line)
+                    if hint:
+                        self.output.put('>>> '+hint)
+                        self.last_hint = hint
         except Exception as exc:
             self.output.put('[lecture interrompue] '+str(exc))
         if buffer:
@@ -201,7 +233,7 @@ class RobotLink:
             code = channel.recv_exit_status() if channel.exit_status_ready() else None
             self._channel = None
             if self.state == BRINGUP:
-                self._set(CONNECTED, 'Le bringup s’est arrêté'+('' if code in (None, 0) else f' (code {code})')+'.')
+                self._set(CONNECTED, self.last_hint or 'Le bringup s’est arrêté'+('' if code in (None, 0) else f' (code {code})')+'.')
 
     def stop_bringup(self, quiet=False, timeout=8.0):
         channel = self._channel

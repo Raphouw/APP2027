@@ -86,6 +86,7 @@ class SshServerTests(unittest.TestCase):
         self.assertIn('ssh-rsa', (Path(self.directory.name)/'known_hosts').read_text())
         self.assertTrue(link.start_bringup(self.settings()))
         self.assertTrue(self.robot.started.wait(5))
+        self.assertTrue(self.robot.command.startswith('bash -ic '))
         self.assertIn('turtlebot3_bringup', self.robot.command)
         link.stop_bringup(timeout=5)
         self.assertTrue(self.robot.got_ctrl_c.wait(5))
