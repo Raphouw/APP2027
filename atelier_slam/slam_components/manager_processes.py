@@ -372,6 +372,7 @@ class ManagerProcessesMixin:
             return
         self._closing = True
         self.auto_mode_active = False
+        self.stop_ros_probe()
         for name in ('odom_proc', 'carto_proc', 'nav_proc'):
             process = getattr(self, name, None)
             if process is not None and process.poll() is None:

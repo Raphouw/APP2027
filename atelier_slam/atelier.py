@@ -13,12 +13,13 @@ import tkinter as tk
 from slam_components.manager_ui import ManagerUIMixin
 from slam_components.manager_processes import ManagerProcessesMixin
 from slam_components.manager_video import ManagerVideoMixin
+from slam_components.manager_ros import ManagerRosMixin
 from slam_components.system_tools import check_ffmpeg
 
 __all__ = ['TB3Manager', 'check_ffmpeg']
 
 
-class TB3Manager(ManagerUIMixin, ManagerProcessesMixin, ManagerVideoMixin):
+class TB3Manager(ManagerUIMixin, ManagerProcessesMixin, ManagerVideoMixin, ManagerRosMixin):
     def __init__(self, root):
         self.root = root
         root.title('Atelier SLAM · TurtleBot3')
@@ -34,6 +35,7 @@ class TB3Manager(ManagerUIMixin, ManagerProcessesMixin, ManagerVideoMixin):
         self.create_rviz_config()
         self.initialize_supervision()
         self.build_workspace()
+        self.start_ros_probe()
         root.bind('<Escape>', lambda event: self.stop_auto_mode())
         root.protocol('WM_DELETE_WINDOW', self.on_closing)
         self.refresh_workspace()

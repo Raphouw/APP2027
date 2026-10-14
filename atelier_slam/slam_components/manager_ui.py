@@ -122,6 +122,7 @@ class ManagerUIMixin:
         self.journal.configure(state='disabled')
         ttk.Button(journal_tab, text='Ouvrir les logs de ce run', command=self.open_debug_logs).pack(anchor='w', pady=8)
         ttk.Button(journal_tab, text='Ouvrir RViz (outils avancés)', command=self.open_rviz).pack(anchor='w', pady=8)
+        self.build_ros_tab()
         video_tab = ttk.Frame(self.book, padding=12)
         self.book.add(video_tab, text='  Caméra optionnelle  ')
         video_controls = ttk.Frame(video_tab)
@@ -204,6 +205,7 @@ class ManagerUIMixin:
                 suffix = ' · zone avant inconnue'
             label.config(text={'imu':'IMU','wheels':'Roues','lidar':'LiDAR'}[key]+suffix,
                          foreground='#14704b' if value else '#846332')
+        self.refresh_ros_panel()
         phase = 'Prêt'
         guidance = 'Démarrez une nouvelle carte ou ouvrez une session existante. Aucun mouvement au démarrage.'
         step = 0
@@ -224,7 +226,10 @@ class ManagerUIMixin:
             phase, step = 'Cartographie', 1
             guidance = 'Cliquez dans la carte pour explorer. Repassez par un lieu connu pour rechercher une boucle.'
             if not ready:
-                if not health.get('calibrated'):
+                if self._ros_level == 'warn' and not health.get('calibrated') and not health.get('imu'):
+                    phase = 'Robot non détecté'
+                    guidance = 'Aucun capteur ne publie sur ROS. Consultez l’onglet « Connexion ROS » : pilote du robot lancé ? même ROS_DOMAIN_ID ?'
+                elif not health.get('calibrated'):
                     phase = 'Calibration IMU'
                     guidance = 'Gardez le robot immobile pendant la calibration IMU.'
                 elif health.get('lidar_front_unknown', 0):
