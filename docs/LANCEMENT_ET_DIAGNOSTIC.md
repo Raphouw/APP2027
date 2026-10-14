@@ -85,3 +85,9 @@ Une comparaison contrôlée a conservé l’ancien manager et son environnement,
 La nouvelle interface évite ces pictogrammes. Les messages dynamiques et noms de session passent par `tk_safe_text` avant affichage ; les caractères hors BMP sont remplacés par `[symbole]`. Les accents sont conservés et **les logs conservent le texte original**. Des tests vérifient cette protection et le contenu des widgets. Le déclencheur est ainsi isolé sur cette machine ; l’identification de la bibliothèque native précise demanderait un backtrace natif supplémentaire.
 
 Le lanceur ajoute une protection contre les mélanges d’environnements et active `faulthandler` pour que toute autre segmentation laisse une trace exploitable. Le démarrage complet de la nouvelle application est vérifié avec `--smoke-test`, y compris avec des variables Python/Conda volontairement invalides à l’entrée du lanceur.
+
+## Fermer ou arrêter l'atelier
+
+- Une seule fenêtre à la fois : si l'atelier tourne déjà (ou a laissé des processus après un plantage), une question propose de **remplacer** l'ancienne instance, qui est alors fermée avec tout ce qu'elle a lancé.
+- Les nœuds, le simulateur et les sondes lancés par l'atelier reçoivent un SIGTERM si le manager disparaît, même tué net. Si la fermeture propre dépasse 12 s, les processus restants sont tués et la fenêtre se ferme.
+- Pour tout arrêter à la main (fenêtre bloquée, processus orphelins) : `./lancer.sh --stop`, ou l'entrée **Arrêter Atelier SLAM** (clic droit sur l'icône, ou icône séparée créée par `scripts/installer_icone.sh`). Seuls les processus de CE dossier sont visés ; `python3 atelier_slam/slam_components/instance.py --list` les liste sans rien arrêter.

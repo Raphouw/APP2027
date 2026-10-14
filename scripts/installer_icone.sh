@@ -11,5 +11,10 @@ chmod +x "$apps_dir/Atelier_SLAM.desktop"
 cp "$apps_dir/Atelier_SLAM.desktop" "$desktop_dir/Atelier_SLAM.desktop"
 chmod +x "$desktop_dir/Atelier_SLAM.desktop"
 command -v gio >/dev/null && gio set "$desktop_dir/Atelier_SLAM.desktop" metadata::trusted true 2>/dev/null || true
+sed -e "s#@PROJECT_DIR@#$project_dir#g" "$project_dir/assets/Arreter_Atelier_SLAM.desktop.template" > "$apps_dir/Arreter_Atelier_SLAM.desktop"
+chmod +x "$apps_dir/Arreter_Atelier_SLAM.desktop"
+cp "$apps_dir/Arreter_Atelier_SLAM.desktop" "$desktop_dir/Arreter_Atelier_SLAM.desktop"
+chmod +x "$desktop_dir/Arreter_Atelier_SLAM.desktop"
+command -v gio >/dev/null && gio set "$desktop_dir/Arreter_Atelier_SLAM.desktop" metadata::trusted true 2>/dev/null || true
 echo "Icône créée dans $apps_dir et $desktop_dir."
 echo "Si elle apparaît grisée sur le Bureau : clic droit > « Autoriser le lancement »."

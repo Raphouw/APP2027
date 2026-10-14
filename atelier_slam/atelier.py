@@ -50,6 +50,27 @@ if __name__ == '__main__':
     from slam_components.run_logging import install_run_logging
     console_log = install_run_logging('console', os.path.join(os.path.dirname(__file__), 'logs', 'manager_runs'))
     os.environ['TB3_MANAGER_RUN_DIR'] = str(console_log.parent)
+    from slam_components import instance
+    lock = None
+    if not args.smoke_test:
+        lock, holder = instance.acquire()
+        if lock is None:
+            # Une autre fenêtre tourne déjà (ou a planté en laissant des processus) : on propose de la remplacer.
+            from tkinter import messagebox
+            asker = tk.Tk()
+            asker.withdraw()
+            replace = messagebox.askyesno(
+                'Atelier SLAM déjà ouvert',
+                'Une autre instance d’Atelier SLAM tourne déjà'+(f' (processus {holder})' if holder else '')+'.\n\n'
+                'La remplacer ? Elle sera fermée avec tout ce qu’elle a lancé (nœuds, simulateur, caméra locale).')
+            asker.destroy()
+            if not replace:
+                sys.exit(0)
+            instance.stop_all()
+            lock, holder = instance.acquire()
+            if lock is None:
+                print('[ATELIER] Impossible de prendre la place de l’instance existante.')
+                sys.exit(3)
     root = tk.Tk()
     app = TB3Manager(root)
     signal.signal(signal.SIGINT, lambda *args: app.on_closing())

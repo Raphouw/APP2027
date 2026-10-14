@@ -9,10 +9,12 @@ for argument in "$@"; do
   case "$argument" in
     --diagnostic) action=diagnostic ;;
     --smoke-test) manager_args+=(--smoke-test) ;;
+    --stop|--arreter) exec /usr/bin/python3 -s "$project_dir/atelier_slam/slam_components/instance.py" ;;
     --help|-h)
-      echo 'Usage : ./lancer.sh [--diagnostic | --smoke-test]'
+      echo 'Usage : ./lancer.sh [--diagnostic | --smoke-test | --stop]'
       echo 'Charge ROS et vérifie les dépendances, sans installer ni compiler.'
       echo '--diagnostic : vérifications et rapport, sans ouvrir le manager.'
+      echo '--stop : arrête Atelier SLAM et tous les processus qu'"'"'il a lancés (fenêtres bloquées, nœuds orphelins).'
       echo '--smoke-test : ouvre puis ferme le manager, sans lancer de robot.'
       exit 0 ;;
     *) echo "Argument inconnu : $argument" >&2; exit 2 ;;

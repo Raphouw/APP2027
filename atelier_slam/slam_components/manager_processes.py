@@ -7,11 +7,14 @@ import logging
 import shutil
 import sys
 import os
+import threading
+import time
 import signal
 import subprocess
 import uuid
 import tkinter as tk
 from .map_format import load_map
+from .instance import child_dies_with_parent, descendants, stop_processes
 from .tk_text import tk_safe_text
 
 
@@ -191,7 +194,8 @@ class ManagerProcessesMixin:
             stream.write(json.dumps(dict(time=datetime.now().isoformat(), command=actual_command,
                                         cwd=self.base_dir, manager_run_id=getattr(self, 'debug_run_id', None)))+'\n')
             stream.flush()
-            process = subprocess.Popen(actual_command, cwd=self.base_dir, env=env,
+            # Les fils reçoivent SIGTERM si le manager disparaît, même tué net : plus de processus orphelins.
+            process = subprocess.Popen(actual_command, cwd=self.base_dir, env=env, preexec_fn=child_dies_with_parent,
                                        stdout=stream, stderr=subprocess.STDOUT)
         if hasattr(self, 'logger'):
             self.logger.info('Started pid=%s command=%r log=%s', process.pid, actual_command, log_path)
@@ -388,11 +392,21 @@ class ManagerProcessesMixin:
         else:
             self._job(self._stop_all, lambda result: self._status('Arrêté.'))
 
+    def _arm_force_exit(self, delay=12.0):
+        """Si la fermeture propre se bloque, on tue tout l'arbre de processus et on quitte quand même."""
+        def force():
+            time.sleep(delay)
+            print('[ATELIER] Fermeture propre trop longue : arrêt forcé des processus restants.')
+            stop_processes(descendants(os.getpid()), grace=1.0)
+            os._exit(0)
+        threading.Thread(target=force, daemon=True).start()
+
     def on_closing(self):
         if self._closing:
             return
         self._closing = True
         self.auto_mode_active = False
+        self._arm_force_exit()
         self.stop_ros_probe()
         if hasattr(self, 'robot_shutdown'):
             self.robot_shutdown()

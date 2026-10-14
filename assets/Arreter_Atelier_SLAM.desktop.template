@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Arrêter Atelier SLAM
+Comment=Ferme Atelier SLAM et tous les processus qu'il a lancés
+Exec=/bin/bash "@PROJECT_DIR@/lancer.sh" --stop
+Path=@PROJECT_DIR@
+Icon=@PROJECT_DIR@/assets/icon.svg
+Terminal=false
+Categories=Education;Science;

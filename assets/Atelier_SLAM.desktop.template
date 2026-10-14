@@ -7,3 +7,8 @@ Path=@PROJECT_DIR@
 Icon=@PROJECT_DIR@/assets/icon.svg
 Terminal=false
 Categories=Education;Science;
+Actions=Stop;
+
+[Desktop Action Stop]
+Name=Arrêter Atelier SLAM
+Exec=/bin/bash "@PROJECT_DIR@/lancer.sh" --stop
