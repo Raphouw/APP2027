@@ -18,7 +18,7 @@ CONFIG_PATH = Path(os.environ.get('ATELIER_CONFIG_DIR', Path.home()/'.config'/'a
 KNOWN_HOSTS = Path.home()/'.ssh'/'known_hosts'
 # model / lds_model vides = on garde ce que le robot définit lui-même (~/.bashrc), comme en ligne de commande.
 DEFAULTS = dict(host='', user='ubuntu', port=22, key_file='', ros_domain_id=30,
-                model='', lds_model='', ros_distro='humble', bringup_command='', camera_port=9999)
+                model='', lds_model='', ros_distro='humble', bringup_command='', camera_port=9999, remember_password=False)
 MODELS = ('', 'burger', 'waffle', 'waffle_pi')
 LDS_MODELS = ('', 'LDS-01', 'LDS-02', 'LDS-03')
 
@@ -47,6 +47,49 @@ def save_settings(settings, path=CONFIG_PATH):
     tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
     os.chmod(tmp, 0o600)
     os.replace(tmp, path)
+
+
+KEYRING_SERVICE = 'atelier_slam'
+
+
+def _account(settings):
+    return f'{str(settings.get("user", "")).strip()}@{str(settings.get("host", "")).strip()}:{int(settings.get("port", 22))}'
+
+
+def keyring_status():
+    """(disponible, raison) : le trousseau du système (Secret Service, Keychain…) est-il utilisable ?"""
+    try:
+        import keyring
+        from keyring.backends import fail
+        backend = keyring.get_keyring()
+        if isinstance(backend, fail.Keyring) or backend.__class__.__module__.endswith('null'):
+            return False, 'Aucun trousseau système disponible (installez gnome-keyring ou utilisez une clé SSH).'
+        return True, ''
+    except Exception as exc:
+        return False, 'Trousseau indisponible ('+str(exc)+') : utilisez une clé SSH.'
+
+
+def remember_password(settings, password):
+    """Enregistre le mot de passe dans le trousseau du système (jamais dans un fichier du projet)."""
+    import keyring
+    keyring.set_password(KEYRING_SERVICE, _account(settings), password)
+
+
+def recall_password(settings):
+    try:
+        import keyring
+        return keyring.get_password(KEYRING_SERVICE, _account(settings)) or ''
+    except Exception:
+        return ''
+
+
+def forget_password(settings):
+    try:
+        import keyring
+        keyring.delete_password(KEYRING_SERVICE, _account(settings))
+        return True
+    except Exception:
+        return False
 
 
 def validate(settings):
@@ -98,6 +141,18 @@ def camera_command(settings):
     port = int(settings.get('camera_port', 9999))
     return (f'source /opt/ros/{distro}/setup.bash; export ROS_DOMAIN_ID={int(settings["ros_domain_id"])}; '
             f'exec python3 -u ~/{CAMERA_REMOTE_DIR}/serveur_camera.py --port {port}')
+
+
+CAMERA_DIAGNOSTIC = r"""
+echo '== modèle'; tr -d '\0' < /proc/device-tree/model 2>/dev/null; echo
+echo '== vcgencmd get_camera'; vcgencmd get_camera 2>&1
+echo '== libcamera / rpicam'; (command -v rpicam-hello libcamera-hello || echo 'ni rpicam-hello ni libcamera-hello installé')
+(rpicam-hello --list-cameras || libcamera-hello --list-cameras) 2>&1 | head -15
+echo '== v4l2-ctl'; (v4l2-ctl --list-devices 2>&1 | head -30) || echo 'v4l-utils absent (sudo apt install v4l-utils)'
+echo '== noyau'; (dmesg 2>/dev/null | grep -iE 'camera|imx[0-9]+|ov5647|unicam|csi' | tail -8) || true
+echo '== paquets ROS caméra'; (ros2 pkg list 2>/dev/null | grep -iE 'camera|v4l2|usb_cam') || echo 'aucun'
+echo '== topics images'; (timeout 5 ros2 topic list 2>/dev/null | grep -iE 'image|camera') || echo 'aucun'
+"""
 
 
 def camera_url(settings):
@@ -335,6 +390,31 @@ class RobotLink:
             self._camera = None
             if not self.camera_message.startswith(('La caméra', 'Le port')):
                 self.camera_message = 'Le serveur caméra s’est arrêté.'
+
+    def diagnose_camera(self):
+        """Interroge le robot (modèle, caméra CSI/USB, paquets ROS) et verse le résultat dans la sortie."""
+        if self._client is None or self.state not in (CONNECTED, BRINGUP):
+            self.camera_message = 'Connectez-vous au robot avant le diagnostic caméra.'
+            return False
+        try:
+            channel = self._client.get_transport().open_session()
+            channel.exec_command('bash -ic '+shlex.quote(CAMERA_DIAGNOSTIC))
+            self.output.put('--- diagnostic caméra ---')
+            buffer = b''
+            while True:
+                chunk = channel.recv(4096)
+                if not chunk:
+                    break
+                buffer += chunk
+            for line in buffer.decode('utf-8', 'replace').splitlines():
+                self.output.put(line)
+            self.output.put('--- fin du diagnostic ---')
+            channel.close()
+        except Exception as exc:
+            self.camera_message = 'Diagnostic impossible : '+explain_error(exc)
+            return False
+        self.camera_message = 'Diagnostic caméra affiché dans la fenêtre ci-dessous.'
+        return True
 
     def stop_camera(self, quiet=False):
         channel = self._camera

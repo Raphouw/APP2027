@@ -85,6 +85,61 @@ class SettingsTests(unittest.TestCase):
             self.assertEqual(r.load_settings(Path(directory)/'absent.json'), r.DEFAULTS)
 
 
+class MemoryKeyring:
+    """Trousseau en mémoire pour les tests (ne touche pas au trousseau réel)."""
+    priority = 1
+
+    def __init__(self):
+        self.store = {}
+
+    def set_password(self, service, username, password): self.store[(service, username)] = password
+    def get_password(self, service, username): return self.store.get((service, username))
+
+    def delete_password(self, service, username):
+        if (service, username) not in self.store:
+            raise KeyError(username)
+        del self.store[(service, username)]
+
+
+class PasswordMemoryTests(unittest.TestCase):
+    def setUp(self):
+        import keyring
+        from keyring.backend import KeyringBackend
+        backend = MemoryKeyring()
+        class Backend(KeyringBackend):
+            priority = 1
+            set_password = lambda self, s, u, p: backend.set_password(s, u, p)
+            get_password = lambda self, s, u: backend.get_password(s, u)
+            delete_password = lambda self, s, u: backend.delete_password(s, u)
+        self.keyring, self.previous, self.backend = keyring, keyring.get_keyring(), backend
+        keyring.set_keyring(Backend())
+
+    def tearDown(self):
+        self.keyring.set_keyring(self.previous)
+
+    def test_password_round_trip_and_forget(self):
+        settings = dict(GOOD, host='robot.local')
+        self.assertEqual(r.recall_password(settings), '')
+        r.remember_password(settings, 'secret')
+        self.assertEqual(r.recall_password(settings), 'secret')
+        self.assertEqual(r.recall_password(dict(settings, host='autre')), '')   # un mot de passe par robot
+        self.assertTrue(r.forget_password(settings))
+        self.assertEqual(r.recall_password(settings), '')
+        self.assertFalse(r.forget_password(settings))
+
+    def test_nothing_secret_reaches_the_settings_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'robot.json'
+            r.save_settings(dict(GOOD, remember_password=True, password='secret'), path)
+            text = path.read_text()
+            self.assertNotIn('secret', text)
+            self.assertTrue(r.load_settings(path)['remember_password'])
+
+    def test_camera_address_comes_from_the_robot_settings(self):
+        self.assertEqual(r.camera_url(dict(GOOD, host='192.168.1.50')), 'tcp://192.168.1.50:9999')
+        self.assertEqual(r.camera_url(dict(GOOD, host='192.168.1.50', camera_port=1234)), 'tcp://192.168.1.50:1234')
+
+
 class LinkTests(unittest.TestCase):
     def test_connect_passes_credentials_and_reports_state(self):
         client = FakeClient()

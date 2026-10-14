@@ -3,7 +3,7 @@
 Dans l'atelier, l'onglet **Robot (SSH)** remplace les lignes de commande :
 
 1. Renseignez l'**adresse** du robot (nom ou IP) et l'**utilisateur** (souvent `ubuntu`). Le port SSH est 22.
-2. **Mot de passe** : saisissez-le, ou laissez vide pour utiliser une clé SSH (champ « Clé SSH » ou clé/agent habituels). Le mot de passe n'est jamais enregistré et le champ est vidé dès le clic sur *Connecter*.
+2. **Mot de passe** : saisissez-le, ou laissez vide pour utiliser une clé SSH (champ « Clé SSH » ou clé/agent habituels). Le champ est vidé dès le clic sur *Connecter*. Pour ne plus le ressaisir, cochez **Mémoriser dans le trousseau du système** : le mot de passe est alors rangé dans le trousseau de votre session (Secret Service / gnome-keyring), qui le conserve après un redémarrage du PC. Il n'est écrit ni dans le dépôt ni dans un fichier de l'atelier. **Oublier le mot de passe** le supprime du trousseau. Sans trousseau disponible, la case est grisée avec une explication : utilisez alors une clé SSH.
 3. Cliquez **Connecter**. À la première connexion, l'empreinte du robot s'affiche : acceptez-la pour l'enregistrer dans `~/.ssh/known_hosts` (comme avec `ssh`).
 4. Cliquez **Lancer le bringup** : l'atelier exécute sur le robot `ros2 launch turtlebot3_bringup robot.launch.py` dans un shell interactif du robot (il lit donc son `~/.bashrc`, comme une session ouverte à la main), avec le `ROS_DOMAIN_ID` choisi (30 par défaut, comme `lancer.sh`). « Modèle » et « Modèle LiDAR » ne remplacent les valeurs du robot que si vous les choisissez (LDS-01, LDS-02 ou LDS-03). La sortie du robot s'affiche dans la fenêtre.
 5. **Arrêter le bringup** envoie un Ctrl-C au robot ; fermer l'atelier arrête aussi le bringup lancé d'ici.
@@ -19,3 +19,5 @@ Erreurs expliquées en clair : identifiants refusés, robot injoignable, SSH dé
 Prérequis : `python3-paramiko` (installé par `./scripts/installer_dependances.sh --installer`), SSH activé sur le robot, PC et robot sur le même réseau.
 
 Vérifié : tests unitaires et tests contre un vrai serveur SSH local simulé (mot de passe, empreinte, bringup, Ctrl-C). Non vérifié sur un vrai TurtleBot3.
+
+**Caméra** : l'adresse du robot et le port caméra (9999 par défaut) remplissent automatiquement le champ « Adresse du flux » de l'onglet « Caméra optionnelle » dès que l'adresse du robot est saisie.

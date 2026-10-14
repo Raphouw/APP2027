@@ -7,3 +7,4 @@ Pillow
 PyYAML
 opencv-python
 paramiko
+keyring
