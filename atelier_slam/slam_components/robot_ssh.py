@@ -146,13 +146,16 @@ def camera_command(settings):
 CAMERA_DIAGNOSTIC = r"""
 echo '== modèle'; tr -d '\0' < /proc/device-tree/model 2>/dev/null; echo
 echo '== système'; (lsb_release -ds; uname -r) 2>&1
-echo '== config.txt (caméra)'; grep -hiE 'camera|imx219|dtoverlay|start_x|gpu_mem' /boot/firmware/config.txt /boot/config.txt 2>/dev/null || echo 'config.txt introuvable'
+echo '== config.txt (caméra)'
+for f in /boot/firmware/config.txt /boot/config.txt; do [ -r "$f" ] && { echo "[$f]"; grep -nE '^[^#]*(camera|imx|dtoverlay|start_x|gpu_mem)' "$f"; }; done; true
+echo '== noyau (journalctl -k / dmesg)'; (journalctl -k --no-pager 2>/dev/null || dmesg 2>/dev/null) | grep -iE 'imx219|unicam|csi|camera|rp1-cfe' | tail -10
+echo '== sous-périphériques / media'; ls /dev/v4l-subdev* /dev/media* 2>&1 | head; (media-ctl -p -d /dev/media0 2>&1 | head -25)
+echo '== droits'; id; ls -l /dev/dma_heap 2>&1 | head -5
 echo '== vcgencmd get_camera'; vcgencmd get_camera 2>&1
 echo '== libcamera / rpicam'; (command -v rpicam-hello libcamera-hello || echo 'ni rpicam-hello ni libcamera-hello installé')
-(rpicam-hello --list-cameras || libcamera-hello --list-cameras) 2>&1 | head -15
 echo '== v4l2-ctl'; (v4l2-ctl --list-devices 2>&1 | head -30) || echo 'v4l-utils absent (sudo apt install v4l-utils)'
-echo '== noyau'; (dmesg 2>/dev/null | grep -iE 'camera|imx[0-9]+|ov5647|unicam|csi' | tail -8) || true
 echo '== paquets ROS caméra'; (ros2 pkg list 2>/dev/null | grep -iE 'camera|v4l2|usb_cam') || echo 'aucun'
+echo '== test camera_ros (8 s)'; timeout 8 ros2 run camera_ros camera_node 2>&1 | head -20
 echo '== topics images'; (timeout 5 ros2 topic list 2>/dev/null | grep -iE 'image|camera') || echo 'aucun'
 """
 

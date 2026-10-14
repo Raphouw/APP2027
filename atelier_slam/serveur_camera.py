@@ -120,6 +120,20 @@ def serve(hub, port):
         threading.Thread(target=client, args=(connection, address), daemon=True).start()
 
 
+def video_device_name(device):
+    try:
+        with open(f'/sys/class/video4linux/{device.rsplit("/", 1)[-1]}/name') as stream:
+            return stream.read().strip()
+    except OSError:
+        return ''
+
+
+def is_capture_candidate(device):
+    """Écarte les nœuds internes du Raspberry Pi (codec, ISP, unicam brut) : ils ne délivrent pas d'image à OpenCV."""
+    name = video_device_name(device).lower()
+    return not any(word in name for word in ('bcm2835', 'unicam', 'rp1', 'pisp', 'codec', 'isp'))
+
+
 def describe_video_devices():
     """Texte de diagnostic : périphériques /dev/video*, leur nom et leurs formats (v4l2-ctl si présent)."""
     import glob
@@ -175,9 +189,12 @@ def run_v4l2(hub, device, fps):
     if wanted.isdigit():
         wanted = f'/dev/video{wanted}'
     # Le périphérique demandé d'abord, puis les autres (sur un Raspberry Pi, video0 n'est souvent pas la caméra).
-    others = [d for d in sorted(glob.glob('/dev/video*'), key=lambda d: int(d[10:] or 0)) if d != wanted]
+    others = [d for d in sorted(glob.glob('/dev/video*'), key=lambda d: int(d[10:] or 0))
+              if d != wanted and is_capture_candidate(d)]
+    if not is_capture_candidate(wanted) and others:
+        wanted = None
     capture = None
-    for candidate in [wanted]+others:
+    for candidate in ([wanted] if wanted else [])+others:
         log(f'essai de {candidate}…')
         capture = _open_v4l2(candidate, hub.width, hub.height)
         if capture is not None:
@@ -235,6 +252,38 @@ def run_ros(hub, topic, wait_for_images=None):
     return True
 
 
+def has_csi_camera():
+    return any('unicam' in video_device_name(d).lower() or 'rp1-cfe' in video_device_name(d).lower()
+               for d in __import__('glob').glob('/dev/video*'))
+
+
+class CameraRosNode:
+    """Lance `camera_ros` (libcamera) pour une caméra CSI Raspberry Pi et relaie sa sortie dans le journal."""
+
+    def __init__(self, width, height):
+        import shutil
+        import subprocess
+        self.tail = []
+        self.process = None
+        if not shutil.which('ros2'):
+            return
+        command = ['ros2', 'run', 'camera_ros', 'camera_node', '--ros-args',
+                   '-p', f'width:={width}', '-p', f'height:={height}']
+        log('caméra CSI détectée (unicam) : lancement de camera_ros')
+        self.process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        threading.Thread(target=self._relay, daemon=True).start()
+
+    def _relay(self):
+        for line in self.process.stdout:
+            line = line.rstrip()
+            self.tail = (self.tail+[line])[-12:]
+            log('camera_ros : '+line)
+
+    def stop(self):
+        if self.process and self.process.poll() is None:
+            self.process.terminate()
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--port', type=int, default=9999)
@@ -253,6 +302,19 @@ def main(argv=None):
         if args.source in ('ros', 'auto'):
             try:
                 finished = run_ros(hub, args.topic, wait_for_images=5.0 if args.source == 'auto' else None)
+                if not finished and has_csi_camera():
+                    node = CameraRosNode(args.width, args.height)
+                    try:
+                        if node.process is not None:
+                            finished = run_ros(hub, args.topic, wait_for_images=15.0)
+                        if not finished:
+                            raise RuntimeError(
+                                'la caméra CSI ne délivre rien via camera_ros.\n'+'\n'.join(node.tail[-6:])+
+                                '\nVérifiez : capteur détecté (`dmesg | grep -i imx219`), câble nappe, '
+                                '`sudo usermod -aG video $USER` puis reconnexion, redémarrage après modification de config.txt.')
+                        return 0
+                    finally:
+                        node.stop()
             except ImportError:
                 log('rclpy introuvable (ROS non chargé dans ce terminal ?)')
                 finished = False
