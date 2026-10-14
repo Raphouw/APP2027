@@ -117,6 +117,8 @@ class TurtleBot3NavNode(OdometryMixin, LidarPerceptionMixin, RecoveryMixin, Reac
 
         # vitesse angulaire corrigée (filtre complémentaire)
         self.gyro_w = 0.0
+        if use_saved_pose and self._load_gyro_bias():
+            self.get_logger().info('[IMU] Biais gyro repris de la calibration de la session : pas de recalibration.')
 
         # Filtre complémentaire encodeurs/gyro
         # alpha_comp proche de 1 → confiance gyro (bonne pour cap long terme)
@@ -343,7 +345,8 @@ class TurtleBot3NavNode(OdometryMixin, LidarPerceptionMixin, RecoveryMixin, Reac
             self.get_logger().info(f"[PHASE5] Camera not available: {e}")
 
         self.create_timer(self.dt, self._control_loop)
-        self.get_logger().info("[INIT] Calibration IMU en cours (ROBOT IMMOBILE)")
+        if not self.imu_ok:
+            self.get_logger().info("[INIT] Calibration IMU en cours (ROBOT IMMOBILE)")
 
 
 _node = None

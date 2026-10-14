@@ -67,6 +67,35 @@ class OdometryMixin:
         if stamp > 0 and hasattr(self, 'log_pose_buffer'):
             self.log_pose_buffer.add(stamp, [self.x, self.y, self.theta])
 
+    GYRO_BIAS_MAX_AGE = 900.0   # s : au-delà, on recalibre robot immobile
+
+    def _save_gyro_bias(self):
+        """Mémorise le biais pour que le passage cartographie → navigation n'impose pas de recalibrer."""
+        directory = getattr(self, 'log_directory', None)
+        if directory:
+            try:
+                import json, os
+                with open(os.path.join(directory, 'gyro_bias.json'), 'w') as stream:
+                    json.dump(dict(bias=self.gyro_bias_z, time=time.time()), stream)
+            except OSError:
+                pass
+
+    def _load_gyro_bias(self):
+        """Reprend le biais d'une calibration récente de la même session ; vrai si l'IMU est prête."""
+        directory = getattr(self, 'log_directory', None)
+        if not directory:
+            return False
+        try:
+            import json, os
+            with open(os.path.join(directory, 'gyro_bias.json')) as stream:
+                data = json.load(stream)
+            if 0 <= time.time()-float(data['time']) < self.GYRO_BIAS_MAX_AGE and math.isfinite(float(data['bias'])):
+                self.gyro_bias_z, self.imu_ok = float(data['bias']), True
+                return True
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
+        return False
+
     def _cb_imu(self, msg: Imu):
         wz = msg.angular_velocity.z
         if not math.isfinite(wz):
@@ -79,6 +108,7 @@ class OdometryMixin:
             if len(self.calib_samples) >= self.CALIB_N:
                 self.gyro_bias_z = sum(self.calib_samples) / float(self.CALIB_N)
                 self.imu_ok = True
+                self._save_gyro_bias()
                 self.get_logger().info(
                     f"[IMU] Calibration OK. Biais gyro Z = {self.gyro_bias_z:.6f} rad/s"
                 )

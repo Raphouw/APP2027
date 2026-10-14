@@ -289,6 +289,9 @@ class ManagerUIMixin:
                 self.robot_artist.set_data([data['pose'][0]], [data['pose'][1]])
             if data.get('path') is not None:
                 points = np.asarray(data['path'])
+                if len(points) and data.get('pose'):
+                    # Le chemin part du robot : sans ce premier tronçon on ne voyait que la fin.
+                    points = np.vstack([[data['pose'][0], data['pose'][1]], points])
                 self.path_artist.set_data(points[:, 0] if len(points) else [], points[:, 1] if len(points) else [])
             if 'new_obstacles' in data:
                 found = np.asarray(data['new_obstacles'])
