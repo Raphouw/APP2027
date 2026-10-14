@@ -2,8 +2,8 @@
 import math
 import time
 import numpy as np
-from .settings import LIDAR_YAW_OFFSET, ODOM_FRAME
-from .lidar_filter import front_mask, ScanHistory
+from .settings import LIDAR_YAW_OFFSET, ODOM_FRAME, OBSTACLE_TTL
+from .lidar_filter import front_mask, ScanHistory, tolerate_front_gaps
 
 
 class MapLocalizationMixin:
@@ -35,6 +35,8 @@ class MapLocalizationMixin:
         self.last_scan_received = None
         self.path = []
         self.dynamic_obstacles.clear()
+        if getattr(self, 'seen_obstacles', None) is not None:
+            self.seen_obstacles.clear()
         self.state = 'READY'
         self.shared_data.update(path=[], state=self.state, goal=None)
 
@@ -67,6 +69,7 @@ class MapLocalizationMixin:
             ranges, msg.angle_min+LIDAR_YAW_OFFSET, msg.angle_increment,
             msg.range_min, msg.range_max, self.robot_pos, now)
         front = front_mask(len(ranges), msg.angle_min+LIDAR_YAW_OFFSET, msg.angle_increment)
+        distances, known, _ = tolerate_front_gaps(distances, known, front)
         front_valid = bool(front.any() and known[front].all())
         self.front_distance = float(distances[front].min()) if front_valid else 0.0
         self.last_scan_received = now if front_valid else None
@@ -76,14 +79,31 @@ class MapLocalizationMixin:
         if self.last_odom_received is None or now-self.last_odom_received > self.sensor_timeout:
             return
         rx, ry, yaw = self.robot_pos
-        points = []
-        self.dynamic_obstacles = {cell: stamp for cell, stamp in self.dynamic_obstacles.items() if now-stamp < 1.0}
-        for distance, angle in zip(ranges[finite], angles[finite]):
-            x, y = rx+distance*math.cos(yaw+angle), ry+distance*math.sin(yaw+angle)
-            points.append((x, y))
-            cell = self.world_to_grid(x, y)
-            if cell is not None:
-                self.dynamic_obstacles[cell] = now
+        self.dynamic_obstacles = {cell: stamp for cell, stamp in self.dynamic_obstacles.items()
+                                  if now-stamp < OBSTACLE_TTL}
+        hits_r, hits_c = ranges[finite], angles[finite]
+        xs, ys = rx+hits_r*np.cos(yaw+hits_c), ry+hits_r*np.sin(yaw+hits_c)
+        points = list(zip(xs.tolist(), ys.tolist()))
+        cols = np.floor((xs-self.origin[0])/self.res).astype(int)
+        rows = np.floor((ys-self.origin[1])/self.res).astype(int)
+        inside = (rows >= 0) & (rows < self.h) & (cols >= 0) & (cols < self.w)
+        rows, cols = rows[inside], cols[inside]
+        known_zone = getattr(self, 'known_zone', None)
+        if known_zone is not None:
+            # Un écho sur (ou près d') un mur de la carte, ou en zone inconnue, n'est pas « nouveau ».
+            novel = ~known_zone[rows, cols]
+            rows, cols = rows[novel], cols[novel]
+        cells = set(zip(rows.tolist(), cols.tolist()))
+        # Confirmation : l'écho doit se répéter au scan suivant (à une cellule près) pour compter.
+        previous = getattr(self, '_previous_hits', set())
+        self._previous_hits = cells
+        near_previous = {(r+dr, c+dc) for r, c in previous for dr in (-1, 0, 1) for dc in (-1, 0, 1)}
+        confirmed = cells if known_zone is None else cells & near_previous
+        seen = getattr(self, 'seen_obstacles', None)
+        for cell in confirmed:
+            self.dynamic_obstacles[cell] = now
+            if seen is not None:
+                seen[cell] = now
         self.shared_data['lidar_pts'] = points[::8]
 
     def camera_cb(self, msg):

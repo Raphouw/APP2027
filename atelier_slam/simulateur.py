@@ -26,9 +26,9 @@ SCAN_EVERY = 10    # un scan tous les 10 pas de physique (10 Hz)
 
 
 class SimulatorNode(Node):
-    def __init__(self, world, pose, noise, truth_csv, seed=0):
+    def __init__(self, world, pose, noise, truth_csv, seed=0, dropout=0.0):
         super().__init__('atelier_simulator')
-        self.robot = SimRobot(world, pose=pose, noise=noise, seed=seed)
+        self.robot = SimRobot(world, pose=pose, noise=noise, seed=seed, dropout=dropout)
         self.cmd = (0.0, 0.0)
         self.last_cmd = 0.0
         self.tick = 0
@@ -119,12 +119,13 @@ def main():
     parser.add_argument('--origin', type=float, nargs=2, default=(0.0, 0.0))
     parser.add_argument('--pose', type=float, nargs=3, default=(1.5, 2.0, 0.0), metavar=('X', 'Y', 'THETA'))
     parser.add_argument('--noise', type=float, default=1.0, help='0 = capteurs parfaits')
+    parser.add_argument('--dropout', type=float, default=0.0, help='part des rayons LiDAR invalides (ex. 0.01)')
     parser.add_argument('--seed', type=int, default=0, help='graine du bruit (reproductible)')
     parser.add_argument('--truth-csv', help='écrit la vérité terrain (timestamp,x,y,theta)')
     args, ros_args = parser.parse_known_args()
     world = World.from_pgm(args.map, args.resolution, args.origin) if args.map else default_world()
     rclpy.init(args=ros_args)
-    node = SimulatorNode(world, tuple(args.pose), args.noise, args.truth_csv, args.seed)
+    node = SimulatorNode(world, tuple(args.pose), args.noise, args.truth_csv, args.seed, args.dropout)
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

@@ -5,7 +5,7 @@ Les attributs sont initialisés par le point d’entrée ; ce mixin ne lance auc
 
 import math
 import time
-from .lidar_filter import front_mask, ScanHistory
+from .lidar_filter import front_mask, ScanHistory, tolerate_front_gaps
 from sensor_msgs.msg import LaserScan
 
 class LidarPerceptionMixin:
@@ -35,6 +35,7 @@ class LidarPerceptionMixin:
             [getattr(self, 'x', 0.), getattr(self, 'y', 0.), getattr(self, 'theta', 0.)], time.monotonic())
         self.lidar_temporal = int(temporal.sum())
         front = front_mask(n, msg.angle_min, msg.angle_increment)
+        distances, known, _ = tolerate_front_gaps(distances, known, front)
         self.lidar_front_known = bool(front.any() and known[front].all())
         self.lidar_front_unknown = int((~known[front]).sum())
         self.lidar_inferred = int(inferred.sum())

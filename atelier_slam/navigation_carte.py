@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Navigation sur une carte validée, avec odométrie commune et surveillance LiDAR."""
 import argparse
+import math
 import time
 import signal
 from multiprocessing import Process, Manager
+import numpy as np
+from scipy.ndimage import binary_dilation, distance_transform_edt
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
@@ -18,22 +21,38 @@ from slam_components.map_format import load_map
 from slam_components.map_localization import MapLocalizationMixin
 from slam_components.map_control import MapControlMixin
 from slam_components.map_view import plotter_process
-from slam_components.settings import ODOM_TOPIC, ODOM_FRAME, SENSOR_TIMEOUT, ROBOT_CLEARANCE, LIDAR_YAW_OFFSET
+from slam_components.settings import ODOM_TOPIC, ODOM_FRAME, SENSOR_TIMEOUT, ROBOT_CLEARANCE, LIDAR_YAW_OFFSET, \
+                                      SOFT_MARGIN, SOFT_WEIGHT, KNOWN_TOLERANCE
 
 __all__ = ['TurtleController', 'PIDController', 'plotter_process', 'LIDAR_YAW_OFFSET', 'main']
 
 
 class TurtleController(MapLocalizationMixin, MapControlMixin, Node):
+    def _prepare_planning_layers(self):
+        """Zone « déjà connue » (murs, inconnu) et coût de proximité des murs."""
+        res = self.meta['resolution']
+        pixels = self.grid/255.0 if self.meta.get('negate', 0) else (255.0-self.grid)/255.0
+        not_free = pixels >= self.meta['free_thresh']
+        tolerance = max(1, int(math.ceil(KNOWN_TOLERANCE/res)))
+        yy, xx = np.ogrid[-tolerance:tolerance+1, -tolerance:tolerance+1]
+        self.known_zone = binary_dilation(not_free, structure=xx*xx+yy*yy <= tolerance*tolerance, border_value=1)
+        # Pénalité décroissante entre la marge dure et SOFT_MARGIN (ne bloque jamais).
+        distance = distance_transform_edt(~not_free)*res
+        soft = np.clip((self.clearance+SOFT_MARGIN-distance)/SOFT_MARGIN, 0.0, 1.0)
+        self.soft_cost = SOFT_WEIGHT*soft*soft
+
     def __init__(self, yaml_path, shared_data, channel=None):
         super().__init__('turtle_controller')
         self.shared_data = shared_data
         self.clearance = ROBOT_CLEARANCE
         self.meta, self.grid, self.static_grid = load_map(yaml_path, clearance=self.clearance)
+        self._prepare_planning_layers()
         if self.meta.get('frame_id') not in (ODOM_FRAME, 'map'):
             raise ValueError(f'Carte attendue dans le repère {ODOM_FRAME}.')
         self.res, self.origin = self.meta['resolution'], self.meta['origin']
         self.h, self.w = self.grid.shape
-        self.planner = DStarLite(self.static_grid)
+        self.planner = DStarLite(self.static_grid, cost=self.soft_cost)
+        self.seen_obstacles = {}
         self.last_plan_time = time.monotonic()
         self.robot_pos = [0.0, 0.0, 0.0]
         self.raw_odom = [0.0, 0.0, 0.0]

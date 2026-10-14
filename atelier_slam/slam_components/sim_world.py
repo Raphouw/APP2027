@@ -80,10 +80,11 @@ def normalize(angle):
 class SimRobot:
     """Robot différentiel : vérité terrain + mesures bruitées de roues, gyro et LiDAR."""
 
-    def __init__(self, world, pose=(1.5, 2.0, 0.0), noise=1.0, seed=None):
+    def __init__(self, world, pose=(1.5, 2.0, 0.0), noise=1.0, seed=None, dropout=0.0):
         self.world = world
         self.x, self.y, self.theta = pose
         self.noise = float(noise)
+        self.dropout = float(dropout)   # part des rayons rendus invalides (0.0 m), comme un vrai LDS
         self.rng = np.random.default_rng(seed)
         self.v = self.w = 0.0
         self.wheel_left = self.wheel_right = 0.0
@@ -128,4 +129,7 @@ class SimRobot:
         ranges = self.world.raycast(self.x, self.y, self.theta, self.angles)
         ranges = ranges + self.rng.normal(0, 0.01 * self.noise, ranges.shape)
         ranges[ranges < RANGE_MIN] = np.inf
+        ranges[ranges > RANGE_MAX] = np.inf   # le bruit ne doit pas créer de mesures hors portée
+        if self.dropout > 0:
+            ranges[self.rng.random(ranges.shape) < self.dropout] = 0.0
         return ranges

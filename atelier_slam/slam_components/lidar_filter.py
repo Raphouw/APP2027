@@ -117,3 +117,45 @@ class ScanHistory:
             self.frames.append((now, transform(local, pose), pose.copy()))
             self.frames = self.frames[-10:]
         return distance, known, spatial, temporal
+
+
+MAX_FRONT_GAP_RAYS = 3     # rayons inconnus consécutifs tolérés dans le cône avant
+MAX_FRONT_GAP_TOTAL = 4    # et au total : au-delà, la zone avant est déclarée inconnue
+
+
+def tolerate_front_gaps(distances, known, front):
+    """Comble quelques rayons isolés invalides (0,0 m du LDS…) dans le cône avant.
+
+    Un vrai LiDAR renvoie souvent 1 à 2 % de mesures invalides ; exiger zéro rayon
+    inconnu arrêtait le robot une mesure sur deux (« avance/arrête »). Un rayon
+    toléré prend la distance du voisin connu le PLUS PROCHE : il ne peut donc pas
+    masquer un obstacle plus proche que ses voisins. Retourne (distances, known,
+    nombre de rayons comblés) ; les entrées ne sont pas modifiées.
+    """
+    unknown = front & ~known
+    count = int(unknown.sum())
+    if not count or count > MAX_FRONT_GAP_TOTAL:
+        return distances, known, 0
+    distances, known = distances.copy(), known.copy()
+    n = len(distances)
+    indices = np.flatnonzero(unknown)
+    runs, current = [], [indices[0]]
+    for i in indices[1:]:
+        if i == current[-1]+1:
+            current.append(i)
+        else:
+            runs.append(current)
+            current = [i]
+    runs.append(current)
+    if any(len(run) > MAX_FRONT_GAP_RAYS for run in runs):
+        return distances, known, 0
+    filled = 0
+    for run in runs:
+        neighbours = [j for j in (run[0]-1, run[-1]+1) if 0 <= j < n and known[j] and not unknown[j]]
+        if not neighbours:
+            return distances, known, 0
+        value = min(distances[j] for j in neighbours)
+        for i in run:
+            distances[i], known[i] = value, True
+            filled += 1
+    return distances, known, filled
