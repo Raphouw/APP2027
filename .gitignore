@@ -13,3 +13,5 @@ Code APP.zip
 .claude/settings.local.json
 atelier_slam/logs/last_pose.txt
 *.egg-info/
+atelier_slam/logs/simulation/
+atelier_slam/logs/standalone_runs/

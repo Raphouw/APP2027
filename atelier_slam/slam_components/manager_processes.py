@@ -37,6 +37,11 @@ class ManagerProcessesMixin:
         self.session_dir = self.session_id = self.map_yaml = None
         self.auto_mode_active = False
         self.auto_phase = 'idle'
+        sim = getattr(self, 'sim_proc', None)
+        if sim is not None and sim.poll() is not None and not self._busy:
+            self.sim_proc = None
+            self.sim_var.set(False)
+            self._status('Le simulateur s’est arrêté. Voir les logs du run.')
         self.root.after(500, self.check_auto_completion)
 
     def _callback_error(self, kind, value, tb):
@@ -257,6 +262,27 @@ class ManagerProcessesMixin:
             self._start_map_navigation(self.map_yaml)
         self._job(work, lambda result: self._status('Navigation prête : choisir une destination sur la carte.'))
 
+    def toggle_simulation(self):
+        """Démarre ou arrête le robot simulé (sans Gazebo), seulement hors session."""
+        def alive(process):
+            return process is not None and process.poll() is None
+        running = alive(getattr(self, 'sim_proc', None))
+        wanted = self.sim_var.get()
+        if wanted == running:
+            return
+        if self._busy or any(alive(getattr(self, name, None)) for name in ('nav_proc', 'odom_proc', 'carto_proc')):
+            self.sim_var.set(running)
+            self._status('Terminez la session en cours avant de changer le mode simulation.')
+            return
+        def work():
+            if wanted:
+                truth = Path(self.logs_dir)/'simulation'/('verite_terrain_'+datetime.now().strftime('%Y%m%d_%H%M%S')+'.csv')
+                self.sim_proc = self._launch(['python3', 'simulator.py', '--truth-csv', str(truth)])
+            else:
+                self._stop_process('sim_proc')
+        self._job(work, lambda result: self._status(
+            'Simulation active : un robot virtuel remplace le robot réel.' if wanted else 'Simulation arrêtée.'))
+
     def start_live_mapping(self):
         self.auto_mode_active = False
         self._job(lambda: self._new_session(True), lambda result: self._status('Cartographie live active.'))
@@ -351,8 +377,12 @@ class ManagerProcessesMixin:
             if process is not None and process.poll() is None:
                 process.send_signal(signal.SIGINT)
         # Le worker unique attend l'opération en cours puis ferme tous les processus.
+        sim = getattr(self, 'sim_proc', None)
+        if sim is not None and sim.poll() is None:
+            sim.send_signal(signal.SIGINT)
         def work():
             try:
+                self._stop_process('sim_proc')
                 self._stop_all()
             finally:
                 if self.video_reader is not None:

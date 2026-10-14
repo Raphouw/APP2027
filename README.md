@@ -18,13 +18,17 @@ Pour une icône cliquable (menu des applications et Bureau) :
 
 Dépendances manquantes : `./scripts/installer_dependances.sh --verifier` puis `--installer`. Les dépendances Python sont aussi listées dans `requirements.txt` / `pyproject.toml`.
 
+## Simulation
+
+Cochez « Mode simulation (sans robot) » dans le manager : un robot virtuel remplace le TurtleBot3. Détails et mesures d'erreur : [docs/SIMULATION.md](docs/SIMULATION.md).
+
 ## Organisation
 
 | Dossier | Contenu |
 |---|---|
 | `atelier_slam/` | Code : points d'entrée (`manager.py`, `tb3_nav_node.py`, `carto_mat.py`, `nav_odom.py`), modules dans `slam_components/`, configuration RViz dans `config/` |
 | `data/demo_map/` | Carte de démonstration (PGM + YAML) |
-| `docs/` | Guides ; `docs/archive/` garde l'ancien résumé d'avant refonte |
+| `docs/` | Guides (dont [SIMULATION.md](docs/SIMULATION.md)) ; `docs/archive/` garde l'ancien résumé d'avant refonte |
 | `tests/` | Tests unitaires (ROS doit être chargé) ; `tests/manual/` : essai manuel de l'interface |
 | `scripts/` | Installation des dépendances et de l'icône |
 | `assets/` | Icône et modèle de lanceur |

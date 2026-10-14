@@ -52,6 +52,10 @@ class ManagerUIMixin:
         self.btn_nav = ttk.Button(sidebar, text='Passer à la navigation', command=self.start_navigation)
         self.btn_nav.pack(fill='x', pady=4)
         ttk.Separator(sidebar).pack(fill='x', pady=16)
+        self.sim_var = tk.BooleanVar(value=False)
+        self.sim_check = ttk.Checkbutton(sidebar, text='Mode simulation (sans robot)', variable=self.sim_var,
+                                         command=self.toggle_simulation)
+        self.sim_check.pack(anchor='w', pady=(0, 8))
         self.open_button = ttk.Button(sidebar, text='Ouvrir une session…', command=self.open_session)
         self.open_button.pack(fill='x', pady=4)
         self.replay_button = ttk.Button(sidebar, text='Reconstruire un CSV…', command=self.replay_csv)

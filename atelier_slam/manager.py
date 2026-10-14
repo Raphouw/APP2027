@@ -27,7 +27,7 @@ class TB3Manager(ManagerUIMixin, ManagerProcessesMixin, ManagerVideoMixin):
         self.base_dir = os.path.abspath(os.path.dirname(__file__))
         self.logs_dir = os.path.join(self.base_dir, 'logs')
         os.makedirs(self.logs_dir, exist_ok=True)
-        self.nav_proc = self.rviz_proc = self.odom_proc = self.carto_proc = None
+        self.nav_proc = self.rviz_proc = self.odom_proc = self.carto_proc = self.sim_proc = None
         self.video_reader = self.video_thread = None
         self.video_enabled = False
         self.rviz_config_path = os.path.join(self.base_dir, 'config', 'atelier.rviz')
