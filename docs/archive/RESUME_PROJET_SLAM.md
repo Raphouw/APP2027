@@ -1,10 +1,10 @@
-> Mise à jour du 7 octobre 2026 : l’interface et le moteur SLAM ont évolué. Consulter le [lancement simplifié et le diagnostic](docs/LANCEMENT_ET_DIAGNOSTIC.md), le [guide Atelier SLAM](docs/GUIDE_ATELIER_SLAM.md), [l’algorithme et les mesures](docs/SLAM_ALGORITHME_ET_MESURES.md) et [l’architecture actuelle](docs/ARCHITECTURE_CODE.md). Le résumé ci-dessous conserve son rôle de description historique.
+> Mise à jour du 7 octobre 2026 : l’interface et le moteur SLAM ont évolué. Consulter le [lancement simplifié et le diagnostic](../LANCEMENT_ET_DIAGNOSTIC.md), le [guide Atelier SLAM](../GUIDE_ATELIER_SLAM.md), [l’algorithme et les mesures](../SLAM_ALGORITHME_ET_MESURES.md) et [l’architecture actuelle](../ARCHITECTURE_CODE.md). Le résumé ci-dessous conserve son rôle de description historique.
 
 # Synthèse détaillée du projet TurtleBot3 : cartographie, localisation et navigation
 
 Document de reprise — état du code examiné le **7 octobre 2026**.
 
-> **Mise à jour :** cette synthèse conserve l’état initial avant découpage. Les quatre scripts principaux ont ensuite été répartis par responsabilité dans `mapping/slam_components/`. Voir [l’architecture actuelle](docs/ARCHITECTURE_CODE.md) pour les nouveaux fichiers et les tests. Les priorités ont ensuite été corrigées : voir [les améliorations appliquées et leur validation](docs/AMELIORATIONS_ET_VALIDATION.md). Les constats ci-dessous décrivent uniquement l’état historique avant ces corrections.
+> **Mise à jour :** cette synthèse conserve l’état initial avant découpage. Les quatre scripts principaux ont ensuite été répartis par responsabilité dans `mapping/slam_components/`. Voir [l’architecture actuelle](../ARCHITECTURE_CODE.md) pour les nouveaux fichiers et les tests. Les priorités ont ensuite été corrigées : voir [les améliorations appliquées et leur validation](../AMELIORATIONS_ET_VALIDATION.md). Les constats ci-dessous décrivent uniquement l’état historique avant ces corrections.
 
 Ce document décrit les fichiers présents dans `mapping/`, leur organisation, leurs échanges et leurs limites. Il s'appuie sur la lecture des dix scripts Python, de la configuration RViz, des métadonnées de carte, des 24 CSV et du contenu de l'archive ZIP. Il distingue le comportement effectivement programmé des intentions annoncées dans les commentaires.
 

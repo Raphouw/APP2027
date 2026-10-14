@@ -2,10 +2,11 @@
 import os
 import sys
 
-print("[TEST] Starting test_manager.py", flush=True)
+print("[TEST] Starting manager_smoke.py", flush=True)
 
-os.chdir(os.path.dirname(__file__))
-sys.path.insert(0, os.path.dirname(__file__))
+app_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'atelier_slam')
+os.chdir(app_dir)
+sys.path.insert(0, app_dir)
 
 print("[TEST] Current directory:", os.getcwd(), flush=True)
 

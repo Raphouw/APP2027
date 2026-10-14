@@ -7,7 +7,7 @@ import tkinter as tk
 import unittest
 from unittest.mock import Mock
 import numpy as np
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'mapping'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'atelier_slam'))
 from slam_components.manager_ui import ManagerUIMixin
 from slam_components.manager_processes import ManagerProcessesMixin
 

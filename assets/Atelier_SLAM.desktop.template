@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Atelier SLAM
+Comment=Cartographie et navigation TurtleBot3
+Exec=/bin/bash "@PROJECT_DIR@/lancer.sh"
+Path=@PROJECT_DIR@
+Icon=@PROJECT_DIR@/assets/icon.svg
+Terminal=false
+Categories=Education;Science;

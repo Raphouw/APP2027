@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock
 import numpy as np
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'mapping'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'atelier_slam'))
 from sensor_msgs.msg import LaserScan
 from slam_components.lidar_filter import filter_scan, front_mask
 from slam_components.tb3_perception import LidarPerceptionMixin

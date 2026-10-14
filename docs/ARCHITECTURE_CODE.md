@@ -1,10 +1,10 @@
 # Architecture actuelle du code
 
-Mise à jour du 7 octobre 2026. Le [résumé initial](../RESUME_PROJET_SLAM.md) décrit l'état historique. Le [suivi des améliorations et validations](AMELIORATIONS_ET_VALIDATION.md) décrit les corrections appliquées après découpage.
+Mise à jour du 7 octobre 2026. Le [résumé initial](archive/RESUME_PROJET_SLAM.md) décrit l'état historique. Le [suivi des améliorations et validations](AMELIORATIONS_ET_VALIDATION.md) décrit les corrections appliquées après découpage.
 
 ## Points d'entrée
 
-Depuis `mapping/`, les scripts restent `manager.py`, `tb3_nav_node.py`, `carto_mat.py` et `nav_odom.py`. Ils initialisent et assemblent les composants. Les fonctions de traitement sont dans `slam_components/`.
+Depuis `atelier_slam/`, les scripts restent `manager.py`, `tb3_nav_node.py`, `carto_mat.py` et `nav_odom.py`. Ils initialisent et assemblent les composants. Les fonctions de traitement sont dans `slam_components/`.
 
 | Ensemble | Modules | Responsabilité |
 |---|---|---|
@@ -72,7 +72,7 @@ La navigation lancée par le manager utilise `--headless --ipc-dir ... --token .
 
 ### Démarrage et panne native
 
-`lancer.sh` prépare un environnement système ROS/Tk cohérent sans installation ; `manager.py` y redirige ses lancements directs. `check_environment.py` sonde les modules natifs dans des sous-processus et archive les résultats. `installer_dependances.sh` vérifie les paquets et installe uniquement les absents sur demande explicite. `tk_text.py` protège l’affichage contre les pictogrammes hors BMP qui déclenchaient la segmentation de l’ancien manager sur la machine de validation. Voir [le diagnostic détaillé](LANCEMENT_ET_DIAGNOSTIC.md).
+`lancer.sh` prépare un environnement système ROS/Tk cohérent sans installation ; `manager.py` y redirige ses lancements directs. `check_environment.py` sonde les modules natifs dans des sous-processus et archive les résultats. `scripts/installer_dependances.sh` vérifie les paquets et installe uniquement les absents sur demande explicite. `tk_text.py` protège l’affichage contre les pictogrammes hors BMP qui déclenchaient la segmentation de l’ancien manager sur la machine de validation. Voir [le diagnostic détaillé](LANCEMENT_ET_DIAGNOSTIC.md).
 
 
 `lidar_filter.py` partage le filtrage angulaire conservateur entre perception réactive et navigation sur carte. La provenance des petits trous estimés est séparée des rayons bruts. Voir [la correction des oscillations](CORRECTION_OSCILLATIONS_LIDAR.md).

@@ -10,7 +10,7 @@ import time
 import unittest
 from unittest.mock import Mock, patch
 import numpy as np
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'mapping'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'atelier_slam'))
 from slam_components.slam_engine import compose, inverse, relative, transform, match_scan, PoseBuffer, PoseGraph, SlamEngine
 from slam_components.session_ipc import SessionChannel, atomic_json
 from slam_components.slam_mapping import SlamMappingMixin
@@ -81,7 +81,7 @@ class SlamTests(unittest.TestCase):
 
     def test_standalone_runs_keep_unique_exception_logs(self):
         with tempfile.TemporaryDirectory() as directory:
-            code = ("import sys; sys.path.insert(0, " + repr(str(Path(__file__).resolve().parents[1]/'mapping')) + "); "
+            code = ("import sys; sys.path.insert(0, " + repr(str(Path(__file__).resolve().parents[1]/'atelier_slam')) + "); "
                     "from slam_components.run_logging import install_run_logging; "
                     "install_run_logging('example', " + repr(directory) + "); print('before crash'); raise RuntimeError('debug marker')")
             for _ in range(2):

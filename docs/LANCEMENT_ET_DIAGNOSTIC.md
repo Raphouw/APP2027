@@ -15,7 +15,7 @@ cd mapping
 python3 manager.py
 ```
 
-Elle redirige automatiquement vers le même lanceur. Vous pouvez aussi double-cliquer sur `Atelier_SLAM.desktop` à la racine du projet ; selon le gestionnaire de fichiers Ubuntu, il faudra autoriser son lancement une première fois. Ce raccourci vise `/home/app-sea/Bureau/APP2027` : si vous déplacez le projet, adapter les champs `Exec` et `Path`. Le script `lancer.sh` lui-même trouve son dossier et fonctionne depuis n’importe quel répertoire.
+Elle redirige automatiquement vers le même lanceur. Vous pouvez aussi double-cliquer sur l’icône « Atelier SLAM » créée par `./scripts/installer_icone.sh` ; selon le gestionnaire de fichiers Ubuntu, il faudra autoriser son lancement une première fois. Ce raccourci vise `/home/app-sea/Bureau/APP2027` : si vous déplacez le projet, adapter les champs `Exec` et `Path`. Le script `lancer.sh` lui-même trouve son dossier et fonctionne depuis n’importe quel répertoire.
 
 Le lanceur :
 
@@ -33,13 +33,13 @@ Les anciennes instructions de `DEMODirectives.txt` décrivent une version empaqu
 ## Installation, seulement si nécessaire
 
 ```bash
-./installer_dependances.sh --verifier
+./scripts/installer_dependances.sh --verifier
 ```
 
 Cette commande lit l’état des paquets APT. Si tout est présent, elle termine sans modification. Pour installer explicitement **les paquets absents uniquement** :
 
 ```bash
-./installer_dependances.sh --installer
+./scripts/installer_dependances.sh --installer
 ```
 
 Cela demande les droits APT habituels. Les dépôts Ubuntu et ROS doivent être déjà configurés. Le script n’utilise pas `pip`, ne réinstalle pas les paquets présents et ne reconstruit pas vos workspaces. Sur la machine de validation, tous les paquets listés étaient déjà installés ; aucune installation système n’a été nécessaire.
@@ -63,7 +63,7 @@ Ce mode vérifie les dépendances, ouvre le vrai manager puis le ferme automatiq
 Chaque tentative possède un dossier distinct :
 
 ```text
-mapping/logs/launches/<run_id>/
+atelier_slam/logs/launches/<run_id>/
   launcher.log
   report.json
   probe_tkinter.log

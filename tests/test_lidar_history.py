@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 import unittest
 import numpy as np
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'mapping'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'atelier_slam'))
 from slam_components.lidar_filter import ScanHistory
 
 

@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import Mock
 import numpy as np
 from matplotlib.figure import Figure
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'mapping'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'atelier_slam'))
 from slam_components.manager_ui import ManagerUIMixin
 
 

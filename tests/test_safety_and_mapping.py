@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'mapping'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'atelier_slam'))
 from dstar_lite import DStarLite
 from slam_components.command_ownership import CommandLease
 from slam_components.map_format import load_map
@@ -135,7 +135,7 @@ class ImprovementsTests(unittest.TestCase):
 
     def test_old_map_requires_regeneration(self):
         with self.assertRaises(ValueError):
-            load_map(Path(__file__).resolve().parents[1]/'mapping/logs/map_out.yaml')
+            load_map(Path(__file__).resolve().parents[1]/'data/demo_map/map_out.yaml')
 
     def test_growth_on_each_side_preserves_world_coordinates(self):
         with tempfile.TemporaryDirectory() as directory:

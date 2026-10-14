@@ -1,0 +1,15 @@
+[project]
+name = "atelier-slam"
+version = "0.2.0"
+description = "Atelier SLAM TurtleBot3 : cartographie, localisation et navigation (projet scolaire de démonstration)"
+requires-python = ">=3.10"
+dependencies = ["numpy", "scipy", "matplotlib", "Pillow", "PyYAML", "opencv-python"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+# Pas de build : le projet se lance avec ./lancer.sh (ROS 2 doit être installé
+# séparément : rclpy, sensor_msgs, nav_msgs, geometry_msgs, tf2_ros).
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["atelier_slam"]

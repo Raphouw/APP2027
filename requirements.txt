@@ -1,0 +1,8 @@
+# Dépendances Python de l'Atelier SLAM (ROS 2 Humble fournit rclpy et les messages).
+# Sous Ubuntu, préférez les paquets système : ./scripts/installer_dependances.sh --installer
+numpy
+scipy
+matplotlib
+Pillow
+PyYAML
+opencv-python

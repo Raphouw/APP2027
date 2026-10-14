@@ -30,7 +30,7 @@ class TB3Manager(ManagerUIMixin, ManagerProcessesMixin, ManagerVideoMixin):
         self.nav_proc = self.rviz_proc = self.odom_proc = self.carto_proc = None
         self.video_reader = self.video_thread = None
         self.video_enabled = False
-        self.rviz_config_path = os.path.join(self.base_dir, 'tb3_auto_config.rviz')
+        self.rviz_config_path = os.path.join(self.base_dir, 'config', 'atelier.rviz')
         self.create_rviz_config()
         self.initialize_supervision()
         self.build_workspace()

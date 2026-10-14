@@ -1,9 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Atelier SLAM
-Comment=Cartographie et navigation TurtleBot3
-Exec=/bin/bash "/home/app-sea/Bureau/APP2027/lancer.sh"
-Path=/home/app-sea/Bureau/APP2027
-Icon=applications-science
-Terminal=true
-Categories=Education;

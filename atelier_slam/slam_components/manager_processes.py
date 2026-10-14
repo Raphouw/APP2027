@@ -420,5 +420,6 @@ Window Geometry:
   Height: 800
   Width: 1000
 """
+            os.makedirs(os.path.dirname(self.rviz_config_path), exist_ok=True)
             with open(self.rviz_config_path, 'w') as f:
                 f.write(rviz_yaml)

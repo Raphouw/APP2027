@@ -10,7 +10,7 @@ Depuis la racine du projet :
 ./lancer.sh
 ```
 
-Le lanceur charge ROS et vérifie les dépendances sans les réinstaller ni compiler. La commande historique `python3 manager.py`, depuis `mapping`, utilise désormais le même lanceur. Un raccourci `Atelier_SLAM.desktop` est également fourni. Voir [lancement et diagnostic](LANCEMENT_ET_DIAGNOSTIC.md) pour l’installation initiale éventuelle et la correction du crash natif.
+Le lanceur charge ROS et vérifie les dépendances sans les réinstaller ni compiler. La commande historique `python3 manager.py`, depuis `atelier_slam`, utilise désormais le même lanceur. Une icône est installable avec `./scripts/installer_icone.sh`. Voir [lancement et diagnostic](LANCEMENT_ET_DIAGNOSTIC.md) pour l’installation initiale éventuelle et la correction du crash natif.
 
 Préparer le pilote du TurtleBot sur le robot, avec un `ROS_DOMAIN_ID` commun aux deux machines. Les entrées attendues sont `/scan`, `/imu` et `/joint_states`. Le projet produit `/my_odom`. Vérifier que les paramètres physiques et les repères du pilote correspondent au robot ; la nouvelle interface ne configure pas le réseau ROS à votre place.
 
@@ -42,11 +42,11 @@ La barre de la carte permet de zoomer et de déplacer la vue. Désactiver l’ou
 Chaque démarrage du manager a un identifiant horodaté et aléatoire :
 
 ```text
-mapping/logs/manager_runs/<run_id>/
+atelier_slam/logs/manager_runs/<run_id>/
   console.log         # stdout, stderr, erreurs de démarrage du manager
   manager.log         # actions, démarrages, PID, chemins, sorties, traces d’erreur
 
-mapping/logs/sessions/<session_id>/
+atelier_slam/logs/sessions/<session_id>/
   session.json        # état, carte, CSV, lien vers le run et son manager.log
   mapping.csv         # scans bruts et poses synchronisées des nouvelles acquisitions
   navigation_*.csv    # acquisitions de navigation

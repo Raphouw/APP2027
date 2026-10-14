@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'mapping'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'atelier_slam'))
 from slam_components.pid import PIDController
 from slam_components.occupancy_grid import OccupancyGridMixin
 from slam_components.map_localization import MapLocalizationMixin

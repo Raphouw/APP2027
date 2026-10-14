@@ -5,7 +5,7 @@ install=false
 case "${1:-}" in
   --installer) install=true ;;
   ''|--verifier) ;;
-  --help|-h) echo 'Usage : ./installer_dependances.sh [--verifier | --installer]'; exit 0 ;;
+  --help|-h) echo 'Usage : ./scripts/installer_dependances.sh [--verifier | --installer]'; exit 0 ;;
   *) echo 'Argument inconnu.' >&2; exit 2 ;;
 esac
 ros_distro="${TB3_ROS_DISTRO:-humble}"
@@ -26,7 +26,7 @@ fi
 printf 'Paquets absents :\n'
 printf '  %s\n' "${missing[@]}"
 if [[ "$install" != true ]]; then
-  echo 'Pour installer uniquement ces paquets : ./installer_dependances.sh --installer'
+  echo 'Pour installer uniquement ces paquets : ./scripts/installer_dependances.sh --installer'
   echo 'Le dépôt APT ROS de votre distribution doit déjà être configuré.'
   exit 2
 fi

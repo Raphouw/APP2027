@@ -1,13 +1,15 @@
 __pycache__/
 *.pyc
-mapping/build/
-mapping/install/
-mapping/log/
-mapping/logs/run_*.csv
-mapping/logs/launches/
-mapping/logs/manager_runs/
-mapping/logs/cache/
-mapping/logs/sessions/
+atelier_slam/build/
+atelier_slam/install/
+atelier_slam/log/
+atelier_slam/logs/run_*.csv
+atelier_slam/logs/launches/
+atelier_slam/logs/manager_runs/
+atelier_slam/logs/cache/
+atelier_slam/logs/sessions/
 backups/
 Code APP.zip
 .claude/settings.local.json
+atelier_slam/logs/last_pose.txt
+*.egg-info/

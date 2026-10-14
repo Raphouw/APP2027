@@ -87,7 +87,7 @@ Fichiers : `dstar_lite.py`, `occupancy_grid.py`.
 Chaque acquisition du gestionnaire reçoit un dossier unique :
 
 ```text
-mapping/logs/sessions/<identifiant>/
+atelier_slam/logs/sessions/<identifiant>/
 ├── session.json
 ├── mapping.csv
 ├── last_pose.txt
@@ -122,14 +122,14 @@ PYTHONDONTWRITEBYTECODE=1 MPLCONFIGDIR=/tmp/slam-matplotlib python3 -m unittest 
 Interface habituelle :
 
 ```bash
-cd mapping
+cd atelier_slam
 python3 manager.py
 ```
 
 Régénération manuelle d'une carte historique dans un nouveau dossier :
 
 ```bash
-cd mapping
+cd atelier_slam
 python3 carto_mat.py -m offline -i logs/run_20260401_093436.csv --auto --output-dir logs/reconstruction -oname reprise
 ```
 

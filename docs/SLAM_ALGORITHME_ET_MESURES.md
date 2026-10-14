@@ -41,8 +41,8 @@ Ces valeurs sont regroupées dans le moteur et doivent être calibrées avec vos
 `trajectory.csv` contient les poses corrigées après optimisation. `mapping.csv` conserve l’acquisition brute. Une référence doit utiliser les colonnes `timestamp,x,y,theta`, en secondes, mètres, radians, dans **le même repère et avec la même origine temporelle**. L’évaluateur interpole la référence sans extrapolation, ne masque pas un décalage de repère par un ajustement automatique et donne RMSE position, percentile 95 et RMSE angulaire.
 
 ```bash
-python3 mapping/evaluate_trajectory.py \
-  mapping/logs/sessions/MA_SESSION/trajectory.csv \
+python3 atelier_slam/evaluate_trajectory.py \
+  atelier_slam/logs/sessions/MA_SESSION/trajectory.csv \
   reference.csv --output evaluation.json
 ```
 
